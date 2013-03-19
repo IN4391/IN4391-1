@@ -5,7 +5,7 @@ import java.rmi.server.UnicastRemoteObject;
 import distributed.systems.core.IMessageReceivedHandler;
 import distributed.systems.core.Message;
 
-public abstract class Client extends UnicastRemoteObject implements  IMessageReceivedHandler{
+public abstract class Client extends UnicastRemoteObject implements IMessageReceivedHandler{
 	private static final long serialVersionUID = 1L;
 	private int clientID;
 	private final String clientURL;

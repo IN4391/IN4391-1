@@ -34,7 +34,7 @@ public class GridSchedulerNode extends Client implements Runnable {
 		this.jobQueue = new ConcurrentLinkedQueue<Job>();
 		
 		// create a messaging socket
-		LocalSocket lSocket = new LocalSocket();
+		Socket lSocket = new LocalSocket();//TODO change this into a RMI version??
 		socket = new SynchronizedSocket(lSocket);
 		socket.addMessageReceivedHandler((IMessageReceivedHandler) this);
 		
@@ -48,8 +48,6 @@ public class GridSchedulerNode extends Client implements Runnable {
 		pollingThread.start();
 	}
 	
-	
-
 	@Override
 	public void messageReceived(Message msg) {
 		/**
@@ -103,6 +101,7 @@ public class GridSchedulerNode extends Client implements Runnable {
 		 * then offloads any job in the waiting queue to that resource manager
 		 */
 		public void run() {
+			super.init(Properties.PORT);//initialize the RMI registry
 			while (running) {
 				// send a message to each resource manager, requesting its load
 				for (String rmUrl : resourceManagerLoad.keySet())
