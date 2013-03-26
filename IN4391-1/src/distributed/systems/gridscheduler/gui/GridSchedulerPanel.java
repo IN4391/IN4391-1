@@ -4,9 +4,13 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Panel;
 import java.awt.ScrollPane;
+import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 
 import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JComponent;
+import javax.swing.JTabbedPane;
 
 import distributed.systems.gridscheduler.model.GridScheduler;
 
@@ -51,11 +55,26 @@ public class GridSchedulerPanel extends JFrame implements Runnable {
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		
 		statusPanels = new ArrayList<StatusPanel>();
-
+		
+		//JTabbedPane tabs = new JTabbedPane();
+		
 		// Create the gridscheduler status panel and add it to the frame
 		GridSchedulerStatusPanel schedulerStatusPanel = new GridSchedulerStatusPanel(scheduler);
 		statusPanels.add(schedulerStatusPanel);
 		this.add(schedulerStatusPanel);
+		/*JComponent pannekoek = schedulerStatusPanel;
+		tabs.addTab("Tab 1", null, pannekoek,
+	                "Does nothing");
+	    tabs.setMnemonicAt(0, KeyEvent.VK_1);
+	    JComponent paneeltje = new JPanel();
+	    tabs.addTab("Tab 2", null, paneeltje,
+                "Does nothing");
+	    tabs.setMnemonicAt(1, KeyEvent.VK_2);
+		this.add(tabs);
+		
+		//The following line enables to use scrolling tabs.
+        tabs.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);*/
+        
 		// Place and resize the status panel
 		schedulerStatusPanel.setLocation(0, 0);
 		schedulerStatusPanel.setSize(schedulerStatusPanel.getPreferredSize());

@@ -40,7 +40,9 @@ public class Simulation implements Runnable {
 		
 		// Setup the model. Create a grid scheduler and a set of clusters.
 		scheduler = new GridScheduler("scheduler1");
-
+		
+		String[] gridschedulers = {scheduler.getUrl()};
+	
 		// Create a new gridscheduler panel so we can monitor our components
 		gridSchedulerPanel = new GridSchedulerPanel(scheduler);
 		gridSchedulerPanel.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -48,7 +50,7 @@ public class Simulation implements Runnable {
 		// Create the clusters and nods
 		clusters = new Cluster[nrClusters];
 		for (int i = 0; i < nrClusters; i++) {
-			clusters[i] = new Cluster("cluster" + i, scheduler.getUrl(), nrNodes); 
+			clusters[i] = new Cluster("cluster" + i, gridschedulers, nrNodes); 
 			
 			// Now create a cluster status panel for each cluster inside this gridscheduler
 			ClusterStatusPanel clusterReporter = new ClusterStatusPanel(clusters[i]);

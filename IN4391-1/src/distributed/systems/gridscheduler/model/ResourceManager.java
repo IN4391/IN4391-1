@@ -2,6 +2,7 @@ package distributed.systems.gridscheduler.model;
 
 import java.rmi.RemoteException;
 import java.util.Queue;
+import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import distributed.systems.core.IMessageReceivedHandler;
@@ -55,7 +56,7 @@ public class ResourceManager implements INodeEventHandler, IMessageReceivedHandl
 
 		this.cluster = cluster;
 		this.socketURL = cluster.getName();
-
+		
 		// Number of jobs in the queue must be larger than the number of nodes, because
 		// jobs are kept in queue until finished. The queue is a bit larger than the 
 		// number of nodes for efficiency reasons - when there are only a few more jobs than

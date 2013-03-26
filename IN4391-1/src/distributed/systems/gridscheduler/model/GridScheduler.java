@@ -122,6 +122,9 @@ public class GridScheduler implements IMessageReceivedHandler, Runnable {
 		// resource manager wants to offload a job to us 
 		if (controlMessage.getType() == ControlMessageType.ReplyLoad)
 			resourceManagerLoad.put(controlMessage.getUrl(),controlMessage.getLoad());
+		
+		if (controlMessage.getType() == ControlMessageType.UpdateView)
+			resourceManagerLoad.put(controlMessage.getUrl(),controlMessage.getLoad());
 			
 		
 	}

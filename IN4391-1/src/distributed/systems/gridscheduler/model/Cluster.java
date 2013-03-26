@@ -3,6 +3,7 @@ package distributed.systems.gridscheduler.model;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 /**
  * 
@@ -37,7 +38,7 @@ public class Cluster implements Runnable {
 	 * @param nrNodes the number of nodes in this cluster
 	 * @throws RemoteException 
 	 */
-	public Cluster(String name, String gridSchedulerURL, int nodeCount) throws RemoteException {
+	public Cluster(String name, String[] gridSchedulerURL, int nodeCount) throws RemoteException {
 		// Preconditions
 		assert(name != null) : "parameter 'name' cannot be null";
 		assert(gridSchedulerURL != null) : "parameter 'gridSchedulerURL' cannot be null";
@@ -50,7 +51,12 @@ public class Cluster implements Runnable {
 		
 		// Initialize the resource manager for this cluster
 		resourceManager = new ResourceManager(this);
-		resourceManager.connectToGridScheduler(gridSchedulerURL);
+
+		long seed = System.currentTimeMillis();
+		Random generator = new Random(seed);
+		int r = generator.nextInt(gridSchedulerURL.length);
+		
+		resourceManager.connectToGridScheduler(gridSchedulerURL[r]);
 
 		// Initialize the nodes 
 		for (int i = 0; i < nodeCount; i++) {
