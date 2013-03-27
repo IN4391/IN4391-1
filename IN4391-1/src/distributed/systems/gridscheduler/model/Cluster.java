@@ -38,7 +38,7 @@ public class Cluster implements Runnable {
 	 * @param nrNodes the number of nodes in this cluster
 	 * @throws RemoteException 
 	 */
-	public Cluster(String name, String[] gridSchedulerURL, int nodeCount) throws RemoteException {
+	public Cluster(String name, ArrayList<String> gridSchedulerURL, int nodeCount) throws RemoteException {
 		// Preconditions
 		assert(name != null) : "parameter 'name' cannot be null";
 		assert(gridSchedulerURL != null) : "parameter 'gridSchedulerURL' cannot be null";

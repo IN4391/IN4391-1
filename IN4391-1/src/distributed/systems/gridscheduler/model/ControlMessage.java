@@ -1,5 +1,6 @@
 package distributed.systems.gridscheduler.model;
 
+import java.util.ArrayList;
 import distributed.systems.core.Message;
 
 /**
@@ -21,6 +22,8 @@ public class ControlMessage extends Message {
 	private final ControlMessageType type;
 	private String url;
 	private Job job;
+	private ArrayList<Job> jobs;
+	private String sload;
 	private int load;
 
 	/**
@@ -37,6 +40,13 @@ public class ControlMessage extends Message {
 	public Job getJob() {
 		return job;
 	}
+	
+	/**
+	 * @return the jobs
+	 */
+	public ArrayList<Job> getJobs() {
+		return jobs;
+	}
 
 	/**
 	 * <DL>
@@ -48,6 +58,32 @@ public class ControlMessage extends Message {
 	public void setJob(Job job) {
 		assert(job != null) : "parameter 'job' cannot be null";
 		this.job = job;
+	}
+	
+	/**
+	 * <DL>
+	 * <DT><B>Preconditions:</B>
+	 * <DD>parameter <CODE>job</CODE> cannot be null
+	 * </DL>
+	 * @param job the job to set
+	 */
+	public void setJobs(ArrayList<Job> jobs) {
+		assert(job != null) : "parameter 'job' cannot be null";
+		this.jobs = jobs;
+	}
+	
+	/**
+	 * @return the load
+	 */
+	public String getSLoad() {
+		return sload;
+	}
+
+	/**
+	 * @param load the load to set
+	 */
+	public void setSLoad(String sload) {
+		this.sload = sload;
 	}
 
 	/**

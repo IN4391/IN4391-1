@@ -1,8 +1,23 @@
 
-Make GSes send message to other GSes to update their view [Anass]
+Make GSes send message to other GSes to update their view [done]
 
-Make RMs choose one of GSes at random [Anass]
+Make RMs choose one of GSes at random [done]
+
+Load balancing between Gses [done]
+
+--------------------------------
+
+Make sending messages between GSes more efficient
+
+RM --> GS
+Try out round robin versus random
+
+In
 
 Try and spawn different processes with ProcessBuilder for use on the DAS-4
 
 Think of fault tolerance mechanisms
+
+Crash is detected by a message from a resource manager, who couldn't connect to a GS node.
+
+GS queues will not be replicated, any jobs lost during a crash must be issued again after detection. Detection is done by a client asking a gridscheduler whether any gridscheduler has this job in his queue.

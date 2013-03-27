@@ -5,6 +5,12 @@ import java.util.ArrayList;
 import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import distributed.systems.core.IMessageReceivedHandler;
 import distributed.systems.core.Message;
@@ -31,9 +37,10 @@ public class ResourceManager implements INodeEventHandler, IMessageReceivedHandl
 	private Cluster cluster;
 	private Queue<Job> jobQueue;
 	private String socketURL;
-	private String[] gridschedulers;
+	private ArrayList<String> gridschedulers;
 	private Random generator; 
 	private int jobQueueSize;
+	private boolean timer;
 	public static final int MAX_QUEUE_SIZE = 32; 
 
 	// Scheduler url
@@ -51,7 +58,7 @@ public class ResourceManager implements INodeEventHandler, IMessageReceivedHandl
 	 * @param cluster the cluster to wich this resource manager belongs.
 	 * @throws RemoteException 
 	 */
-	public ResourceManager(Cluster cluster, String[] gridschedulers) throws RemoteException	{
+	public ResourceManager(Cluster cluster, ArrayList<String> gridschedulers) throws RemoteException	{
 		// preconditions
 		assert(cluster != null);
 
@@ -69,7 +76,9 @@ public class ResourceManager implements INodeEventHandler, IMessageReceivedHandl
 		
 		long seed = System.currentTimeMillis();
 		generator = new Random(seed);
-
+		
+		this.timer = false;
+		
 		LocalSocket lSocket = new LocalSocket();
 		socket = new SynchronizedSocket(lSocket);
 		socket.register(socketURL);
@@ -98,11 +107,14 @@ public class ResourceManager implements INodeEventHandler, IMessageReceivedHandl
 		if (jobQueue.size() >= jobQueueSize) { //cluster.getNodeCount()){
 
 			ControlMessage controlMessage = new ControlMessage(ControlMessageType.AddJob);
+			controlMessage.setUrl(cluster.getName());
 			controlMessage.setJob(job);
 			
-			int r = generator.nextInt(gridschedulers.length);
-			String chosen = gridschedulers[r];
+			int r = generator.nextInt(gridschedulers.size());
+			String chosen = gridschedulers.get(r);
 			socket.sendMessage(controlMessage, "localsocket://" + chosen);
+			
+			startTimer(chosen, job);
 
 			// otherwise store it in the local queue
 		} else {
@@ -110,6 +122,56 @@ public class ResourceManager implements INodeEventHandler, IMessageReceivedHandl
 			scheduleJobs();
 		}
 
+	}
+	
+	public void startTimer(String gs, Job j)
+	{
+		ExecutorService service = Executors.newSingleThreadExecutor();
+
+		try {
+		    Runnable r = new Runnable() {
+		        @Override
+		        public void run() {
+		            while (timer) {}
+		        }
+		    };
+
+		    Future<?> f = service.submit(r);
+
+		    f.get(30, TimeUnit.SECONDS);     // attempt the task for two minutes
+		}
+		catch (final InterruptedException e) {
+		    // The thread was interrupted during sleep, wait or join
+		}
+		catch (final TimeoutException e) {
+			gridschedulers.remove(gs);
+		    retry(gs, j);
+		}
+		catch (final ExecutionException e) {
+		    // An exception from within the Runnable task
+		}
+		finally {
+		    service.shutdown();
+		}
+	}
+	
+	public void stopTimer()
+	{
+		timer = false;
+	}
+	
+	public void retry(String gs, Job job)
+	{
+		ControlMessage controlMessage = new ControlMessage(ControlMessageType.Retry);
+		controlMessage.setJob(job);
+		controlMessage.setUrl(cluster.getName());
+		controlMessage.setSLoad(gs);
+		
+		int r = generator.nextInt(gridschedulers.size());
+		String chosen = gridschedulers.get(r);
+		socket.sendMessage(controlMessage, "localsocket://" + chosen);
+		
+		startTimer(gs, job);
 	}
 
 	/**
@@ -134,7 +196,7 @@ public class ResourceManager implements INodeEventHandler, IMessageReceivedHandl
 		// free nodes
 		Node freeNode;
 		Job waitingJob;
-
+		System.out.println(jobQueue.size());
 		while ( ((waitingJob = getWaitingJob()) != null) && ((freeNode = cluster.getFreeNode()) != null) ) {
 			freeNode.startJob(waitingJob);
 		}
@@ -208,6 +270,18 @@ public class ResourceManager implements INodeEventHandler, IMessageReceivedHandl
 			replyMessage.setUrl(cluster.getName());
 			replyMessage.setLoad(jobQueue.size());
 			socket.sendMessage(replyMessage, "localsocket://" + controlMessage.getUrl());				
+		}
+		
+		// connect to new GS node 
+		if (controlMessage.getType() == ControlMessageType.JoiningGS)
+		{
+			connectToGridScheduler("scheduler" + controlMessage.getLoad());
+		}
+		
+		// reply from GS node who is alive
+		if (controlMessage.getType() == ControlMessageType.Roger)
+		{
+			stopTimer();
 		}
 
 	}

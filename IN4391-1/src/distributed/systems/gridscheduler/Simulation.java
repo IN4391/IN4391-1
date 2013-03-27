@@ -41,11 +41,15 @@ public class Simulation implements Runnable {
 		
 		ArrayList<GridScheduler> schedulers = new ArrayList<GridScheduler>();
 		for (int i = 0; i < 5; i++)
-			schedulers.add(new GridScheduler("scheduler" + i));
+			schedulers.add(new GridScheduler("scheduler" + i, "scheduler" + ((i + 1) % 5), "scheduler" + ((i - 1 + 5) % 5)));
 		
 		for (GridScheduler gs : schedulers)
 		{
-			gs.addSchedulers(new ArrayList<GridScheduler>(schedulers));
+			for (GridScheduler g : schedulers)
+			{
+				if (!gs.equals(g))
+					gs.addScheduler(g.getUrl());
+			}
 		}
 		// Setup the model. Create a grid scheduler and a set of clusters.
 		//scheduler = new GridScheduler("scheduler1");
@@ -56,18 +60,18 @@ public class Simulation implements Runnable {
 		{
 			gridschedulers.add(gs.getUrl());
 		}
-		String[] gs_urls = new String[gridschedulers.size()];
-		gs_urls = gridschedulers.toArray(gs_urls);
+		//String[] gs_urls = new String[gridschedulers.size()];
+		//gs_urls = gridschedulers.toArray(gs_urls);
 		//String[] gs_urls = {scheduler.getUrl()};
 	
 		// Create a new gridscheduler panel so we can monitor our components
-		gridSchedulerPanel = new GridSchedulerPanel(scheduler);
+		gridSchedulerPanel = new GridSchedulerPanel(schedulers);
 		gridSchedulerPanel.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
 		// Create the clusters and nods
 		clusters = new Cluster[nrClusters];
 		for (int i = 0; i < nrClusters; i++) {
-			clusters[i] = new Cluster("cluster" + i, gs_urls, nrNodes); 
+			clusters[i] = new Cluster("cluster" + i, gridschedulers, nrNodes); 
 			
 			// Now create a cluster status panel for each cluster inside this gridscheduler
 			ClusterStatusPanel clusterReporter = new ClusterStatusPanel(clusters[i]);

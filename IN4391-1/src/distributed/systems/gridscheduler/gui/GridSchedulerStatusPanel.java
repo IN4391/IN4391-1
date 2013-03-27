@@ -3,6 +3,7 @@ package distributed.systems.gridscheduler.gui;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
+import java.util.ArrayList;
 
 import distributed.systems.gridscheduler.model.GridScheduler;
 
@@ -25,9 +26,9 @@ public class GridSchedulerStatusPanel extends StatusPanel {
 	private final static int panelWidth = 300;
 	private int colWidth = panelWidth / 2;
 
-	private GridScheduler scheduler;
+	private ArrayList<GridScheduler> scheduler;
 	
-	public GridSchedulerStatusPanel(GridScheduler scheduler) {
+	public GridSchedulerStatusPanel(ArrayList<GridScheduler> scheduler) {
 		this.scheduler = scheduler;
 		setPreferredSize(new Dimension(panelWidth,50));
 	}
@@ -47,11 +48,17 @@ public class GridSchedulerStatusPanel extends StatusPanel {
 	    int y = padding + fontHeight;
 	    
 	    g.drawString("Scheduler name ", x, y);
-	    g.drawString("" + scheduler.getUrl(), x + colWidth, y);
+	    String tmp = "", tmp2 = "";
+	    for (GridScheduler gs: scheduler)
+	    {
+	    	tmp += gs.getUrl() + " | ";
+	    	tmp2 += gs.getWaitingJobs() + " | ";
+	    }
+	    g.drawString("" + tmp, x + colWidth, y);
 	    y += fontHeight;
 	    
 	    g.drawString("Jobs waiting ", x, y);
-	    g.drawString("" + scheduler.getWaitingJobs(), x + colWidth, y);
+	    g.drawString("" + tmp2, x + colWidth, y);
 	    y += fontHeight;
     }	
 
