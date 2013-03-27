@@ -50,14 +50,13 @@ public class Cluster implements Runnable {
 		nodes = new ArrayList<Node>(nodeCount);
 		
 		// Initialize the resource manager for this cluster
-		resourceManager = new ResourceManager(this);
-
-		long seed = System.currentTimeMillis();
-		Random generator = new Random(seed);
-		int r = generator.nextInt(gridSchedulerURL.length);
+		resourceManager = new ResourceManager(this, gridSchedulerURL);
 		
-		resourceManager.connectToGridScheduler(gridSchedulerURL[r]);
-
+		for (String gs : gridSchedulerURL)
+		{
+			resourceManager.connectToGridScheduler(gs);
+		}
+		
 		// Initialize the nodes 
 		for (int i = 0; i < nodeCount; i++) {
 			Node n = new Node();

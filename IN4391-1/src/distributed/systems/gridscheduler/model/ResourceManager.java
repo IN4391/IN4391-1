@@ -1,6 +1,7 @@
 package distributed.systems.gridscheduler.model;
 
 import java.rmi.RemoteException;
+import java.util.ArrayList;
 import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -30,6 +31,8 @@ public class ResourceManager implements INodeEventHandler, IMessageReceivedHandl
 	private Cluster cluster;
 	private Queue<Job> jobQueue;
 	private String socketURL;
+	private String[] gridschedulers;
+	private Random generator; 
 	private int jobQueueSize;
 	public static final int MAX_QUEUE_SIZE = 32; 
 
@@ -48,7 +51,7 @@ public class ResourceManager implements INodeEventHandler, IMessageReceivedHandl
 	 * @param cluster the cluster to wich this resource manager belongs.
 	 * @throws RemoteException 
 	 */
-	public ResourceManager(Cluster cluster) throws RemoteException	{
+	public ResourceManager(Cluster cluster, String[] gridschedulers) throws RemoteException	{
 		// preconditions
 		assert(cluster != null);
 
@@ -57,11 +60,15 @@ public class ResourceManager implements INodeEventHandler, IMessageReceivedHandl
 		this.cluster = cluster;
 		this.socketURL = cluster.getName();
 		
+		this.gridschedulers = gridschedulers;
 		// Number of jobs in the queue must be larger than the number of nodes, because
 		// jobs are kept in queue until finished. The queue is a bit larger than the 
 		// number of nodes for efficiency reasons - when there are only a few more jobs than
 		// nodes we can assume a node will become available soon to handle that job.
 		jobQueueSize = cluster.getNodeCount() + MAX_QUEUE_SIZE;
+		
+		long seed = System.currentTimeMillis();
+		generator = new Random(seed);
 
 		LocalSocket lSocket = new LocalSocket();
 		socket = new SynchronizedSocket(lSocket);
@@ -86,13 +93,16 @@ public class ResourceManager implements INodeEventHandler, IMessageReceivedHandl
 		// check preconditions
 		assert(job != null) : "the parameter 'job' cannot be null";
 		assert(gridSchedulerURL != null) : "No grid scheduler URL has been set for this resource manager";
-
+		
 		// if the jobqueue is full, offload the job to the grid scheduler
-		if (jobQueue.size() >= jobQueueSize) {
+		if (jobQueue.size() >= jobQueueSize) { //cluster.getNodeCount()){
 
 			ControlMessage controlMessage = new ControlMessage(ControlMessageType.AddJob);
 			controlMessage.setJob(job);
-			socket.sendMessage(controlMessage, "localsocket://" + gridSchedulerURL);
+			
+			int r = generator.nextInt(gridschedulers.length);
+			String chosen = gridschedulers[r];
+			socket.sendMessage(controlMessage, "localsocket://" + chosen);
 
 			// otherwise store it in the local queue
 		} else {
@@ -183,7 +193,7 @@ public class ResourceManager implements INodeEventHandler, IMessageReceivedHandl
 		assert(message != null) : "parameter 'message' cannot be null";
 
 		ControlMessage controlMessage = (ControlMessage)message;
-
+		
 		// resource manager wants to offload a job to us 
 		if (controlMessage.getType() == ControlMessageType.AddJob)
 		{

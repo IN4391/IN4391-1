@@ -1,6 +1,7 @@
 package distributed.systems.gridscheduler;
 
 import java.rmi.RemoteException;
+import java.util.ArrayList;
 
 import javax.swing.JFrame;
 
@@ -38,10 +39,26 @@ public class Simulation implements Runnable {
 	public Simulation() throws RemoteException {
 		GridScheduler scheduler;
 		
-		// Setup the model. Create a grid scheduler and a set of clusters.
-		scheduler = new GridScheduler("scheduler1");
+		ArrayList<GridScheduler> schedulers = new ArrayList<GridScheduler>();
+		for (int i = 0; i < 5; i++)
+			schedulers.add(new GridScheduler("scheduler" + i));
 		
-		String[] gridschedulers = {scheduler.getUrl()};
+		for (GridScheduler gs : schedulers)
+		{
+			gs.addSchedulers(new ArrayList<GridScheduler>(schedulers));
+		}
+		// Setup the model. Create a grid scheduler and a set of clusters.
+		//scheduler = new GridScheduler("scheduler1");
+		scheduler = schedulers.get(0);
+		
+		ArrayList<String> gridschedulers = new ArrayList<String>();
+		for (GridScheduler gs : schedulers)
+		{
+			gridschedulers.add(gs.getUrl());
+		}
+		String[] gs_urls = new String[gridschedulers.size()];
+		gs_urls = gridschedulers.toArray(gs_urls);
+		//String[] gs_urls = {scheduler.getUrl()};
 	
 		// Create a new gridscheduler panel so we can monitor our components
 		gridSchedulerPanel = new GridSchedulerPanel(scheduler);
@@ -50,7 +67,7 @@ public class Simulation implements Runnable {
 		// Create the clusters and nods
 		clusters = new Cluster[nrClusters];
 		for (int i = 0; i < nrClusters; i++) {
-			clusters[i] = new Cluster("cluster" + i, gridschedulers, nrNodes); 
+			clusters[i] = new Cluster("cluster" + i, gs_urls, nrNodes); 
 			
 			// Now create a cluster status panel for each cluster inside this gridscheduler
 			ClusterStatusPanel clusterReporter = new ClusterStatusPanel(clusters[i]);

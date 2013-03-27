@@ -1,6 +1,7 @@
 package distributed.systems.gridscheduler.model;
 
 import java.rmi.RemoteException;
+import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -31,6 +32,9 @@ public class GridScheduler implements IMessageReceivedHandler, Runnable {
 	
 	// a hashmap linking each resource manager to an estimated load
 	private ConcurrentHashMap<String, Integer> resourceManagerLoad;
+	
+	// other gridschedulers
+	private ArrayList<GridScheduler> gridschedulers;
 
 	// polling frequency, 1hz
 	private long pollSleep = 1000;
@@ -57,6 +61,7 @@ public class GridScheduler implements IMessageReceivedHandler, Runnable {
 		this.url = url;
 		this.resourceManagerLoad = new ConcurrentHashMap<String, Integer>();
 		this.jobQueue = new ConcurrentLinkedQueue<Job>();
+		this.gridschedulers = new ArrayList<GridScheduler>();
 		
 		// create a messaging socket
 		LocalSocket lSocket = new LocalSocket();
@@ -71,6 +76,12 @@ public class GridScheduler implements IMessageReceivedHandler, Runnable {
 		running = true;
 		pollingThread = new Thread(this);
 		pollingThread.start();
+	}
+	
+	public void addSchedulers(ArrayList<GridScheduler> gs)
+	{
+		this.gridschedulers = gs;
+		this.gridschedulers.remove(this);
 	}
 	
 	/**
@@ -177,6 +188,16 @@ public class GridScheduler implements IMessageReceivedHandler, Runnable {
 					// increase the estimated load of that RM by 1 (because we just added a job)
 					int load = resourceManagerLoad.get(leastLoadedRM);
 					resourceManagerLoad.put(leastLoadedRM, load+1);
+					
+					ControlMessage uMessage;
+					
+					for (GridScheduler gs : gridschedulers)
+					{
+						uMessage = new ControlMessage(ControlMessageType.UpdateView);
+						uMessage.setUrl(leastLoadedRM);
+						uMessage.setLoad(load+1);
+						socket.sendMessage(uMessage, "localsocket://" + gs.getUrl());
+					}
 					
 				}
 				
