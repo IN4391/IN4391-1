@@ -68,7 +68,7 @@ public class GridSchedulerNode extends Client implements Runnable {
 			}
 			// resource manager wants to offload a job to us 
 			if (controlMessage.getType() == ControlMessageType.ReplyLoad){
-				resourceManagerLoad.put(controlMessage.getUrl(),controlMessage.getLoad());
+				resourceManagerLoad.put(controlMessage.getUrl(),controlMessage.getILoad());
 			}
 		}
 		/**

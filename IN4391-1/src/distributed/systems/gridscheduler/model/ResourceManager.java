@@ -1,7 +1,12 @@
 package distributed.systems.gridscheduler.model;
 
+import java.net.MalformedURLException;
+import java.rmi.AlreadyBoundException;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -33,7 +38,7 @@ import distributed.systems.example.LocalSocket;
  * @author Niels Brouwers, Boaz Pat-El
  *
  */
-public class ResourceManager implements INodeEventHandler, IMessageReceivedHandler {
+public class ResourceManager extends UnicastRemoteObject implements INodeEventHandler, IMessageReceivedHandler {
 	private Cluster cluster;
 	private Queue<Job> jobQueue;
 	private String socketURL;
@@ -58,16 +63,19 @@ public class ResourceManager implements INodeEventHandler, IMessageReceivedHandl
 	 * @param cluster the cluster to wich this resource manager belongs.
 	 * @throws RemoteException 
 	 */
-	public ResourceManager(Cluster cluster, ArrayList<String> gridschedulers) throws RemoteException	{
+	public ResourceManager(Cluster cluster, String gridscheduler) throws RemoteException	{
 		// preconditions
 		assert(cluster != null);
-
+		System.out.println("RM in da house");
 		this.jobQueue = new ConcurrentLinkedQueue<Job>();
 
 		this.cluster = cluster;
 		this.socketURL = cluster.getName();
 		
-		this.gridschedulers = gridschedulers;
+		this.gridschedulers = new ArrayList<String>();
+		
+		this.gridschedulers.add(gridscheduler);
+		
 		// Number of jobs in the queue must be larger than the number of nodes, because
 		// jobs are kept in queue until finished. The queue is a bit larger than the 
 		// number of nodes for efficiency reasons - when there are only a few more jobs than
@@ -79,11 +87,57 @@ public class ResourceManager implements INodeEventHandler, IMessageReceivedHandl
 		
 		this.timer = false;
 		
-		LocalSocket lSocket = new LocalSocket();
+		/*LocalSocket lSocket = new LocalSocket();
 		socket = new SynchronizedSocket(lSocket);
 		socket.register(socketURL);
 
-		socket.addMessageReceivedHandler(this);
+		socket.addMessageReceivedHandler(this);*/
+		
+		// Bind the node to the RMI registry.
+		try {
+			java.rmi.Naming.bind(socketURL, this);
+		} catch (MalformedURLException | AlreadyBoundException e) {
+			e.printStackTrace();
+		}
+				
+		final String name = socketURL;
+				
+		// Let the node unregister from RMI registry on shut down.
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+			@Override
+			public void run() {
+				System.out.println("Shutting down " + name + ".");
+				try {
+					java.rmi.Naming.unbind(name);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		});
+		
+		this.gridSchedulerURL = gridscheduler;
+		initGridSchedulers(gridscheduler);
+	}
+	
+	public void initGridSchedulers(String random_gs)
+	{
+		ControlMessage message = new ControlMessage(ControlMessageType.RequestGSes);
+		message.setUrl(socketURL);
+		message.setLoad(random_gs);
+		System.out.println("this is it: " + random_gs);
+		sendMessage(message, random_gs);
+		//socket.sendMessage(message, "localsocket://" + random_gs);
+	}
+	
+	public void sendMessage(Message m, String url)
+	{
+		try {
+			IMessageReceivedHandler stub = (IMessageReceivedHandler) java.rmi.Naming.lookup(url);
+			stub.onMessageReceived(m);
+		} catch (MalformedURLException | RemoteException
+				| NotBoundException e) {
+			e.printStackTrace();
+		}
 	}
 
 	/**
@@ -112,7 +166,8 @@ public class ResourceManager implements INodeEventHandler, IMessageReceivedHandl
 			
 			int r = generator.nextInt(gridschedulers.size());
 			String chosen = gridschedulers.get(r);
-			socket.sendMessage(controlMessage, "localsocket://" + chosen);
+			sendMessage(controlMessage, chosen);
+			//socket.sendMessage(controlMessage, "localsocket://" + chosen);
 			
 			startTimer(chosen, job);
 
@@ -138,7 +193,7 @@ public class ResourceManager implements INodeEventHandler, IMessageReceivedHandl
 
 		    Future<?> f = service.submit(r);
 
-		    f.get(30, TimeUnit.SECONDS);     // attempt the task for two minutes
+		    f.get(30, TimeUnit.SECONDS);     // attempt the task for 30 sec
 		}
 		catch (final InterruptedException e) {
 		    // The thread was interrupted during sleep, wait or join
@@ -169,7 +224,8 @@ public class ResourceManager implements INodeEventHandler, IMessageReceivedHandl
 		
 		int r = generator.nextInt(gridschedulers.size());
 		String chosen = gridschedulers.get(r);
-		socket.sendMessage(controlMessage, "localsocket://" + chosen);
+		sendMessage(controlMessage, chosen);
+		//socket.sendMessage(controlMessage, "localsocket://" + chosen);
 		
 		startTimer(gs, job);
 	}
@@ -187,7 +243,10 @@ public class ResourceManager implements INodeEventHandler, IMessageReceivedHandl
 		// no waiting jobs found, return null
 		return null;
 	}
-
+	
+	public int queueSize() {
+		return jobQueue.size();
+	}
 	/**
 	 * Tries to schedule jobs in the jobqueue to free nodes. 
 	 */
@@ -196,7 +255,7 @@ public class ResourceManager implements INodeEventHandler, IMessageReceivedHandl
 		// free nodes
 		Node freeNode;
 		Job waitingJob;
-		System.out.println(jobQueue.size());
+		//System.out.println(jobQueue.size());
 		while ( ((waitingJob = getWaitingJob()) != null) && ((freeNode = cluster.getFreeNode()) != null) ) {
 			freeNode.startJob(waitingJob);
 		}
@@ -238,7 +297,8 @@ public class ResourceManager implements INodeEventHandler, IMessageReceivedHandl
 
 		ControlMessage message = new ControlMessage(ControlMessageType.ResourceManagerJoin);
 		message.setUrl(socketURL);
-		socket.sendMessage(message, "localsocket://" + gridSchedulerURL);
+		sendMessage(message, gridSchedulerURL);
+		//socket.sendMessage(message, "localsocket://" + gridSchedulerURL);
 
 	}
 
@@ -262,26 +322,71 @@ public class ResourceManager implements INodeEventHandler, IMessageReceivedHandl
 			jobQueue.add(controlMessage.getJob());
 			scheduleJobs();
 		}
+		
+		// resource manager wants to offload a job to us 
+		if (controlMessage.getType() == ControlMessageType.SpawnJob)
+		{
+			addJob(controlMessage.getJob());
+		}
+
 
 		// resource manager wants to offload a job to us 
 		if (controlMessage.getType() == ControlMessageType.RequestLoad)
 		{
 			ControlMessage replyMessage = new ControlMessage(ControlMessageType.ReplyLoad);
 			replyMessage.setUrl(cluster.getName());
-			replyMessage.setLoad(jobQueue.size());
-			socket.sendMessage(replyMessage, "localsocket://" + controlMessage.getUrl());				
+			replyMessage.setILoad(jobQueue.size());
+			sendMessage(replyMessage, controlMessage.getUrl());
+			//socket.sendMessage(replyMessage, "localsocket://" + controlMessage.getUrl());				
+		}
+		
+		// connect to new GS node 
+		if (controlMessage.getType() == ControlMessageType.ReplyGS)
+		{
+			String gs = controlMessage.getUrl();
+			gridschedulers.add(gs);
 		}
 		
 		// connect to new GS node 
 		if (controlMessage.getType() == ControlMessageType.JoiningGS)
 		{
-			connectToGridScheduler("scheduler" + controlMessage.getLoad());
+			connectToGridScheduler("scheduler" + controlMessage.getILoad());
 		}
 		
 		// reply from GS node who is alive
 		if (controlMessage.getType() == ControlMessageType.Roger)
 		{
 			stopTimer();
+		}
+		
+		if (controlMessage.getType() == ControlMessageType.Status)
+		{
+			List <Node> nodes = cluster.getNodes();
+		    
+		    int nrBusyNodes = 0;
+		    int nrDownNodes = 0;
+		    for (Node node : nodes) {
+		    	if (node.getStatus() == NodeStatus.Busy) nrBusyNodes++;
+		    	if (node.getStatus() == NodeStatus.Down) nrDownNodes++;
+		    }
+		    
+		    int load = (int)Math.round( (nrBusyNodes * 100) / (double)nodes.size() );
+		    int availability = (int)Math.round( ( (nodes.size() - nrDownNodes) * 100) / (double)nodes.size() );
+		    String reply = "Cluster name: " + cluster.getName() + "\n";
+		    reply += "Nr. of nodes: " + cluster.getNodeCount() + "\n";
+		    reply += "Load: " + load + "% \n";
+		    reply += "Available: " + availability + "% \n";
+		    
+		    ControlMessage replyMessage = new ControlMessage(ControlMessageType.ReplyLoad);
+			replyMessage.setUrl(cluster.getName());
+			replyMessage.setSLoad(reply);
+			sendMessage(replyMessage, controlMessage.getUrl());
+			//socket.sendMessage(replyMessage, "localsocket://" + controlMessage.getUrl());				
+		}
+		
+		if (controlMessage.getType() == ControlMessageType.ShutDown)
+		{
+			this.cluster.stopPollThread();
 		}
 
 	}

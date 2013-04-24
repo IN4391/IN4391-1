@@ -81,4 +81,15 @@ public class LocalSocket extends Socket {
 		else
 			throw new IDNotAssignedException();
 	}
+	
+	public void printAll()
+	{
+		System.out.println(url + " reporting: ");
+		for (String key: localMap.keySet())
+		{
+			System.out.print(key + " ");
+		}
+		System.out.println("");
+		System.out.println("==============");
+	}
 }

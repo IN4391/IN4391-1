@@ -1,13 +1,22 @@
 package distributed.systems.gridscheduler;
 
+import java.net.MalformedURLException;
+import java.rmi.AlreadyBoundException;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+import java.util.Random;
 
 import javax.swing.JFrame;
 
+import distributed.systems.core.IMessageReceivedHandler;
+import distributed.systems.core.Message;
 import distributed.systems.gridscheduler.gui.ClusterStatusPanel;
 import distributed.systems.gridscheduler.gui.GridSchedulerPanel;
 import distributed.systems.gridscheduler.model.Cluster;
+import distributed.systems.gridscheduler.model.ControlMessage;
+import distributed.systems.gridscheduler.model.ControlMessageType;
 import distributed.systems.gridscheduler.model.GridScheduler;
 import distributed.systems.gridscheduler.model.Job;
 
@@ -19,7 +28,7 @@ import distributed.systems.gridscheduler.model.Job;
  * 
  * @author Niels Brouwers, Boaz Pat-El
  */
-public class Simulation implements Runnable {
+public class Simulation extends UnicastRemoteObject implements Runnable {
 	// Number of clusters in the simulation
 	private final static int nrClusters = 5;
 
@@ -29,6 +38,8 @@ public class Simulation implements Runnable {
 	// Simulation components
 	Cluster clusters[];
 	
+	GridScheduler gs;
+	
 	GridSchedulerPanel gridSchedulerPanel;
 	
 	/**
@@ -37,20 +48,37 @@ public class Simulation implements Runnable {
 	 * @throws RemoteException 
 	 */
 	public Simulation() throws RemoteException {
+		
+		// Bind the node to the RMI registry.
+				try {
+					java.rmi.Naming.bind("JobCreator", this);
+				} catch (MalformedURLException | AlreadyBoundException e) {
+					e.printStackTrace();
+				}
+						
+				final String name = "JobCreator";
+						
+				// Let the node unregister from RMI registry on shut down.
+				Runtime.getRuntime().addShutdownHook(new Thread() {
+					@Override
+					public void run() {
+						System.out.println("Shutting down " + name + ".");
+						try {
+							java.rmi.Naming.unbind(name);
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+					}
+				});
+				
 		GridScheduler scheduler;
 		
 		ArrayList<GridScheduler> schedulers = new ArrayList<GridScheduler>();
 		for (int i = 0; i < 5; i++)
 			schedulers.add(new GridScheduler("scheduler" + i, "scheduler" + ((i + 1) % 5), "scheduler" + ((i - 1 + 5) % 5)));
 		
-		for (GridScheduler gs : schedulers)
-		{
-			for (GridScheduler g : schedulers)
-			{
-				if (!gs.equals(g))
-					gs.addScheduler(g.getUrl());
-			}
-		}
+		gs = schedulers.get(0);
+		
 		// Setup the model. Create a grid scheduler and a set of clusters.
 		//scheduler = new GridScheduler("scheduler1");
 		scheduler = schedulers.get(0);
@@ -67,11 +95,23 @@ public class Simulation implements Runnable {
 		// Create a new gridscheduler panel so we can monitor our components
 		gridSchedulerPanel = new GridSchedulerPanel(schedulers);
 		gridSchedulerPanel.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
+		
+		long seed = System.currentTimeMillis();
+		Random generator = new Random(seed);
+		
+		// Startup delay to make sure all GS nodes have started
+		try {
+			Thread.sleep(3000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 		// Create the clusters and nods
 		clusters = new Cluster[nrClusters];
 		for (int i = 0; i < nrClusters; i++) {
-			clusters[i] = new Cluster("cluster" + i, gridschedulers, nrNodes); 
+			int r = generator.nextInt(gridschedulers.size());
+			clusters[i] = new Cluster("cluster" + i, gridschedulers.get(r), nrNodes); 
 			
 			// Now create a cluster status panel for each cluster inside this gridscheduler
 			ClusterStatusPanel clusterReporter = new ClusterStatusPanel(clusters[i]);
@@ -105,7 +145,11 @@ public class Simulation implements Runnable {
 		while (gridSchedulerPanel.isVisible()) {
 			// Add a new job to the system that take up random time
 			Job job = new Job(8000 + (int)(Math.random() * 5000), jobId++);
-			clusters[0].getResourceManager().addJob(job);
+			ControlMessage cMessage = new ControlMessage(ControlMessageType.SpawnJob);
+			cMessage.setJob(job);
+			sendMessage(cMessage, clusters[0].getName());
+			//clusters[0].getResourceManager().addJob(job);
+			//gs.spawnJob();
 			
 			try {
 				// Sleep a while before creating a new job
@@ -117,6 +161,17 @@ public class Simulation implements Runnable {
 		}
 
 	}
+	
+	public void sendMessage(Message m, String url)
+	{
+		try {
+			IMessageReceivedHandler stub = (IMessageReceivedHandler) java.rmi.Naming.lookup(url);
+			stub.onMessageReceived(m);
+		} catch (MalformedURLException | RemoteException
+				| NotBoundException e) {
+			e.printStackTrace();
+		}
+	}
 
 	/**
 	 * Application entry point.
@@ -124,6 +179,12 @@ public class Simulation implements Runnable {
 	 * @throws RemoteException 
 	 */
 	public static void main(String[] args) throws RemoteException {
+		try {
+			java.rmi.registry.LocateRegistry.createRegistry(1099);
+		} catch (RemoteException e) {
+			e.printStackTrace();
+		}
+		
 		// Create and run the simulation
 		new Simulation();
 	}

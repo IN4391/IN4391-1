@@ -1,6 +1,10 @@
 package distributed.systems.gridscheduler.model;
 
+import java.net.MalformedURLException;
+import java.rmi.AlreadyBoundException;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,7 +30,7 @@ import distributed.systems.example.LocalSocket;
  * @author Niels Brouwers
  *
  */
-public class GridScheduler implements IMessageReceivedHandler, Runnable {
+public class GridScheduler extends UnicastRemoteObject implements IMessageReceivedHandler, Runnable {
 	
 	// job queue
 	private ConcurrentLinkedQueue<Job> jobQueue;
@@ -35,7 +39,7 @@ public class GridScheduler implements IMessageReceivedHandler, Runnable {
 	private final String url;
 
 	// communications socket
-	private Socket socket;
+	private SynchronizedSocket socket;
 	
 	// a hashmap linking each resource manager to an estimated load
 	private ConcurrentHashMap<String, Integer> resourceManagerLoad;
@@ -45,6 +49,8 @@ public class GridScheduler implements IMessageReceivedHandler, Runnable {
 	
 	private String upstream_neighbour;
 	private String downstream_neighbour;
+	
+	private long jobId;
 	
 	// random number generator
 	private Random generator; 
@@ -80,11 +86,12 @@ public class GridScheduler implements IMessageReceivedHandler, Runnable {
 		this.resourceManagerLoad = new ConcurrentHashMap<String, Integer>();
 		this.jobQueue = new ConcurrentLinkedQueue<Job>();
 		this.gridschedulers = new ArrayList<String>();
-		
+		this.jobId = 0;
+		System.out.println("Like wtf is going on?");
 		// create a messaging socket
-		LocalSocket lSocket = new LocalSocket();
+		/*LocalSocket lSocket = new LocalSocket();
 		socket = new SynchronizedSocket(lSocket);
-		socket.addMessageReceivedHandler(this);
+		socket.addMessageReceivedHandler(this);*/
 		
 		long seed = System.currentTimeMillis();
 		generator = new Random(seed);
@@ -92,8 +99,30 @@ public class GridScheduler implements IMessageReceivedHandler, Runnable {
 		timer = false;
 		// register the socket under the name of the gridscheduler.
 		// In this way, messages can be sent between components by name.
-		socket.register(url);
-
+		//socket.register(url);
+		
+		// Bind the node to the RMI registry.
+		try {
+			java.rmi.Naming.bind(url, this);
+		} catch (MalformedURLException | AlreadyBoundException e) {
+			e.printStackTrace();
+		}
+		
+		final String name = url;
+		
+		// Let the node unregister from RMI registry on shut down.
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+			@Override
+			public void run() {
+				System.out.println("Shutting down " + name + ".");
+				try {
+					java.rmi.Naming.unbind(name);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		});
+	
 		// start the polling thread
 		running = true;
 		pollingThread = new Thread(this);
@@ -124,6 +153,17 @@ public class GridScheduler implements IMessageReceivedHandler, Runnable {
 		return ret;
 	}
 	
+	public void sendMessage(Message m, String url)
+	{
+		try {
+			IMessageReceivedHandler stub = (IMessageReceivedHandler) java.rmi.Naming.lookup(url);
+			stub.onMessageReceived(m);
+		} catch (MalformedURLException | RemoteException
+				| NotBoundException e) {
+			e.printStackTrace();
+		}
+	}
+	
 	public void nodeLeft(String gs)
 	{
 		if (gs.equals(downstream_neighbour) || gs.equals(upstream_neighbour))
@@ -133,25 +173,29 @@ public class GridScheduler implements IMessageReceivedHandler, Runnable {
 				ControlMessage cMessage = new ControlMessage(ControlMessageType.NeighborRequest);
 				cMessage.setUrl(this.getUrl());
 				cMessage.setSLoad(gs);
-				socket.sendMessage(cMessage, "localsocket://" + upstream_neighbour);
+				sendMessage(cMessage, upstream_neighbour);
+				//socket.sendMessage(cMessage, "localsocket://" + upstream_neighbour);
 			}
 			else
 			{
 				ControlMessage cMessage = new ControlMessage(ControlMessageType.NeighborRequest);
 				cMessage.setUrl(this.getUrl());
 				cMessage.setSLoad(gs);
-				socket.sendMessage(cMessage, "localsocket://" + downstream_neighbour);
+				sendMessage(cMessage, downstream_neighbour);
+				//socket.sendMessage(cMessage, "localsocket://" + downstream_neighbour);
 			}
 		}
 		else
 		{
 			ControlMessage cMessage = new ControlMessage(ControlMessageType.CrashedGS);
 			cMessage.setUrl(this.getUrl());
-			socket.sendMessage(cMessage, "localsocket://" + downstream_neighbour);
+			sendMessage(cMessage, upstream_neighbour);
+			//socket.sendMessage(cMessage, "localsocket://" + upstream_neighbour);
 			
 			ControlMessage cMessage2 = new ControlMessage(ControlMessageType.CrashedGS);
 			cMessage2.setUrl(this.getUrl());
-			socket.sendMessage(cMessage2, "localsocket://" + downstream_neighbour);
+			sendMessage(cMessage2, downstream_neighbour);
+			//socket.sendMessage(cMessage2, "localsocket://" + downstream_neighbour);
 		}
 		
 	}
@@ -179,21 +223,67 @@ public class GridScheduler implements IMessageReceivedHandler, Runnable {
 		if (controlMessage.getType() == ControlMessageType.ResourceManagerJoin)
 			resourceManagerLoad.put(controlMessage.getUrl(), Integer.MAX_VALUE);
 		
+		if (controlMessage.getType() == ControlMessageType.ForwardRM)
+		{	
+			String origin = (String)controlMessage.getLoad();
+			
+			if (!origin.equals(this.getUrl()))
+			{
+				resourceManagerLoad.put(controlMessage.getUrl(), Integer.MAX_VALUE);
+				ControlMessage cMessage = new ControlMessage(ControlMessageType.ReplyGS);
+				cMessage.setUrl(this.getUrl());
+				sendMessage(cMessage, controlMessage.getSLoad());
+				//socket.sendMessage(cMessage, "localsocket://" + controlMessage.getSLoad());
+				
+				ControlMessage fMessage = new ControlMessage(ControlMessageType.ForwardRM);
+				fMessage.setUrl(this.getUrl());
+				fMessage.setLoad(origin);
+				fMessage.setSLoad(controlMessage.getSLoad());
+				sendMessage(fMessage, downstream_neighbour);
+				//socket.sendMessage(fMessage, "localsocket://" + downstream_neighbour);
+			}
+		}
+		
+		if (controlMessage.getType() == ControlMessageType.RequestGSes)
+		{
+			resourceManagerLoad.put(controlMessage.getUrl(), Integer.MAX_VALUE);
+			
+			ControlMessage fMessage = new ControlMessage(ControlMessageType.ForwardRM);
+			fMessage.setUrl(this.getUrl());
+			fMessage.setLoad(this.getUrl());
+			fMessage.setSLoad(controlMessage.getUrl());
+			sendMessage(fMessage, downstream_neighbour);
+			//socket.sendMessage(fMessage, "localsocket://" + downstream_neighbour);
+		}
+		
 		// resource manager wants to offload a job to us 
 		if (controlMessage.getType() == ControlMessageType.AddJob)
 		{
 			jobQueue.add(controlMessage.getJob());
 			ControlMessage cMessage = new ControlMessage(ControlMessageType.Roger);
 			cMessage.setUrl(this.getUrl());
-			socket.sendMessage(cMessage, "localsocket://" + controlMessage.getUrl());
+			sendMessage(cMessage, controlMessage.getUrl());
+			//socket.sendMessage(cMessage, "localsocket://" + controlMessage.getUrl());
 		}
 			
-		// resource manager wants to offload a job to us 
+		// resource manager told us his load 
 		if (controlMessage.getType() == ControlMessageType.ReplyLoad)
-			resourceManagerLoad.put(controlMessage.getUrl(),controlMessage.getLoad());
+			resourceManagerLoad.put(controlMessage.getUrl(),controlMessage.getILoad());
 		
 		if (controlMessage.getType() == ControlMessageType.UpdateView)
-			resourceManagerLoad.put(controlMessage.getUrl(),controlMessage.getLoad());
+		{
+			String origin = controlMessage.getSLoad();
+			if (!origin.equals(this.getUrl()))
+			{
+				resourceManagerLoad.put(controlMessage.getUrl(),controlMessage.getILoad());
+				ControlMessage uMessage = new ControlMessage(ControlMessageType.UpdateView);
+				uMessage.setUrl(controlMessage.getUrl());
+				uMessage.setILoad(controlMessage.getILoad());
+				uMessage.setSLoad(controlMessage.getSLoad());
+				sendMessage(uMessage, downstream_neighbour);
+				//socket.sendMessage(uMessage, "localsocket://" + downstream_neighbour);
+			}
+		}
 		
 		if (controlMessage.getType() == ControlMessageType.BulkJob)
 		{
@@ -211,7 +301,8 @@ public class GridScheduler implements IMessageReceivedHandler, Runnable {
 			jobQueue.add(controlMessage.getJob());
 			ControlMessage cMessage = new ControlMessage(ControlMessageType.Roger);
 			cMessage.setUrl(this.getUrl());
-			socket.sendMessage(cMessage, "localsocket://" + controlMessage.getUrl());
+			sendMessage(cMessage, controlMessage.getUrl());
+			//socket.sendMessage(cMessage, "localsocket://" + controlMessage.getUrl());
 			nodeLeft(controlMessage.getSLoad());
 		}
 		
@@ -225,37 +316,48 @@ public class GridScheduler implements IMessageReceivedHandler, Runnable {
 					ControlMessage cMessage = new ControlMessage(ControlMessageType.NeighborRequest);
 					cMessage.setUrl(this.getUrl());
 					cMessage.setSLoad(controlMessage.getSLoad());
-					socket.sendMessage(cMessage, "localsocket://" + upstream_neighbour);
+					sendMessage(cMessage, upstream_neighbour);
+					//socket.sendMessage(cMessage, "localsocket://" + upstream_neighbour);
 				}
 				else
 				{
 					ControlMessage cMessage = new ControlMessage(ControlMessageType.NeighborRequest);
 					cMessage.setUrl(this.getUrl());
 					cMessage.setSLoad(controlMessage.getSLoad());
-					socket.sendMessage(cMessage, "localsocket://" + downstream_neighbour);
+					sendMessage(cMessage, downstream_neighbour);
+					//socket.sendMessage(cMessage, "localsocket://" + downstream_neighbour);
 				}
-			}
-			
-			if (controlMessage.getUrl().equals(downstream_neighbour))
-			{
-				ControlMessage cMessage = new ControlMessage(ControlMessageType.CrashedGS);
-				cMessage.setUrl(this.getUrl());
-				cMessage.setSLoad(controlMessage.getSLoad());
-				socket.sendMessage(cMessage, "localsocket://" + upstream_neighbour);
 			}
 			else
 			{
-				ControlMessage cMessage = new ControlMessage(ControlMessageType.CrashedGS);
-				cMessage.setUrl(this.getUrl());
-				cMessage.setSLoad(controlMessage.getSLoad());
-				socket.sendMessage(cMessage, "localsocket://" + downstream_neighbour);
+				if (controlMessage.getUrl().equals(downstream_neighbour))
+				{
+					ControlMessage cMessage = new ControlMessage(ControlMessageType.CrashedGS);
+					cMessage.setUrl(this.getUrl());
+					cMessage.setSLoad(controlMessage.getSLoad());
+					sendMessage(cMessage, upstream_neighbour);
+					//socket.sendMessage(cMessage, "localsocket://" + upstream_neighbour);
+				}
+				else
+				{
+					ControlMessage cMessage = new ControlMessage(ControlMessageType.CrashedGS);
+					cMessage.setUrl(this.getUrl());
+					cMessage.setSLoad(controlMessage.getSLoad());
+					sendMessage(cMessage, downstream_neighbour);
+					//socket.sendMessage(cMessage, "localsocket://" + downstream_neighbour);
+				}
 			}
+		}
+		
+		if (controlMessage.getType() == ControlMessageType.ShutDown)
+		{
+			stopPollThread();
 		}
 		
 		// node crash recovery 
 		if (controlMessage.getType() == ControlMessageType.NeighborRequest)
 		{
-			if (controlMessage.getSLoad().equals(downstream_neighbour) || controlMessage.getSLoad().equals(downstream_neighbour))
+			if (controlMessage.getSLoad().equals(downstream_neighbour) || controlMessage.getSLoad().equals(upstream_neighbour))
 			{
 				if (controlMessage.getSLoad().equals(downstream_neighbour))
 				{
@@ -273,14 +375,16 @@ public class GridScheduler implements IMessageReceivedHandler, Runnable {
 					ControlMessage cMessage = new ControlMessage(ControlMessageType.NeighborRequest);
 					cMessage.setUrl(this.getUrl());
 					cMessage.setSLoad(controlMessage.getSLoad());
-					socket.sendMessage(cMessage, "localsocket://" + upstream_neighbour);
+					sendMessage(cMessage, upstream_neighbour);
+					//socket.sendMessage(cMessage, "localsocket://" + upstream_neighbour);
 				}
 				else
 				{
 					ControlMessage cMessage = new ControlMessage(ControlMessageType.NeighborRequest);
 					cMessage.setUrl(this.getUrl());
 					cMessage.setSLoad(controlMessage.getSLoad());
-					socket.sendMessage(cMessage, "localsocket://" + downstream_neighbour);
+					sendMessage(cMessage, downstream_neighbour);
+					//socket.sendMessage(cMessage, "localsocket://" + downstream_neighbour);
 				}
 			}
 		}
@@ -289,15 +393,15 @@ public class GridScheduler implements IMessageReceivedHandler, Runnable {
 		if (controlMessage.getType() == ControlMessageType.InformQueue)
 		{
 			int size = jobQueue.size();
-			if (size >= controlMessage.getLoad() * 10 || (controlMessage.getLoad() == 0 && size > 10))
+			if (size >= controlMessage.getILoad() * 10 || (controlMessage.getILoad() == 0 && size > 10))
 			{
 				ControlMessage hMessage = new ControlMessage(ControlMessageType.BulkJob);
 				hMessage.setUrl(this.getUrl());
 				System.out.println("Bulking from: " + url + "-->" + controlMessage.getUrl());
 				System.out.println(url + "|: " + size);
 				int nrjobs;
-				if (size >= controlMessage.getLoad() * 10)
-					nrjobs = controlMessage.getLoad() * 5;
+				if (size >= controlMessage.getILoad() * 10)
+					nrjobs = controlMessage.getILoad() * 5;
 				else
 					nrjobs = size / 2;
 				
@@ -311,12 +415,23 @@ public class GridScheduler implements IMessageReceivedHandler, Runnable {
 					}
 				}
 				hMessage.setJobs(new ArrayList<Job>(bulk));
-				socket.sendMessage(hMessage, "localsocket://" + controlMessage.getUrl());
+				sendMessage(hMessage, controlMessage.getUrl());
+				//socket.sendMessage(hMessage, "localsocket://" + controlMessage.getUrl());
 				System.out.println(url + ": " + jobQueue.size());
 			}
 			
 		}		
 		
+	}
+	
+	public void informOthers(String leastLoadedRM, int newLoad)
+	{
+		ControlMessage uMessage = new ControlMessage(ControlMessageType.UpdateView);
+		uMessage.setUrl(leastLoadedRM);
+		uMessage.setILoad(newLoad);
+		uMessage.setSLoad(this.getUrl());
+		sendMessage(uMessage, downstream_neighbour);
+		//socket.sendMessage(uMessage, "localsocket://" + downstream_neighbour);
 	}
 
 	// finds the least loaded resource manager and returns its url
@@ -342,20 +457,22 @@ public class GridScheduler implements IMessageReceivedHandler, Runnable {
 	 * then offloads any job in the waiting queue to that resource manager
 	 */
 	public void run() {
+		System.out.println(this.getUrl() + " started!");
 		while (running) {
 			// send a message to each resource manager, requesting its load
 			for (String rmUrl : resourceManagerLoad.keySet())
 			{
 				ControlMessage cMessage = new ControlMessage(ControlMessageType.RequestLoad);
 				cMessage.setUrl(this.getUrl());
-				socket.sendMessage(cMessage, "localsocket://" + rmUrl);
+				sendMessage(cMessage, rmUrl);
+				//socket.sendMessage(cMessage, "localsocket://" + rmUrl);
 			}
 			
-			int r = generator.nextInt(gridschedulers.size());
+			/*int r = generator.nextInt(gridschedulers.size());
 			ControlMessage hMessage = new ControlMessage(ControlMessageType.InformQueue);
 			hMessage.setUrl(this.getUrl());
-			hMessage.setLoad(jobQueue.size());
-			socket.sendMessage(hMessage, "localsocket://" + gridschedulers.get(r));
+			hMessage.setILoad(jobQueue.size());
+			socket.sendMessage(hMessage, "localsocket://" + gridschedulers.get(r));*/
 			
 			// schedule waiting messages to the different clusters
 			for (Job job : jobQueue)
@@ -366,7 +483,8 @@ public class GridScheduler implements IMessageReceivedHandler, Runnable {
 				
 					ControlMessage cMessage = new ControlMessage(ControlMessageType.AddJob);
 					cMessage.setJob(job);
-					socket.sendMessage(cMessage, "localsocket://" + leastLoadedRM);
+					sendMessage(cMessage, leastLoadedRM);
+					//socket.sendMessage(cMessage, "localsocket://" + leastLoadedRM);
 					
 					jobQueue.remove(job);
 					
@@ -374,20 +492,13 @@ public class GridScheduler implements IMessageReceivedHandler, Runnable {
 					int load = resourceManagerLoad.get(leastLoadedRM);
 					resourceManagerLoad.put(leastLoadedRM, load+1);
 					
-					ControlMessage uMessage;
-					
-					for (String gs : gridschedulers)
-					{
-						uMessage = new ControlMessage(ControlMessageType.UpdateView);
-						uMessage.setUrl(leastLoadedRM);
-						uMessage.setLoad(load+1);
-						socket.sendMessage(uMessage, "localsocket://" + gs);
-					}
+					informOthers(leastLoadedRM, load + 1);
 					
 				}
 				
 			}
 			
+			System.out.println(getUrl() + ": " + jobQueue.size());
 			
 			// sleep
 			try

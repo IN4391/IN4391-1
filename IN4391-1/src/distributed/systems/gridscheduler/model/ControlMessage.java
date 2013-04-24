@@ -23,8 +23,9 @@ public class ControlMessage extends Message {
 	private String url;
 	private Job job;
 	private ArrayList<Job> jobs;
+	private Object load;
 	private String sload;
-	private int load;
+	private int iload;
 
 	/**
 	 * Constructs a new ControlMessage object
@@ -75,12 +76,26 @@ public class ControlMessage extends Message {
 	/**
 	 * @return the load
 	 */
+	public Object getLoad() {
+		return load;
+	}
+
+	/**
+	 * @param load the load to set
+	 */
+	public void setLoad(Object load) {
+		this.load = load;
+	}
+	
+	/**
+	 * @return the load
+	 */
 	public String getSLoad() {
 		return sload;
 	}
 
 	/**
-	 * @param load the load to set
+	 * @param iload the load to set
 	 */
 	public void setSLoad(String sload) {
 		this.sload = sload;
@@ -89,15 +104,15 @@ public class ControlMessage extends Message {
 	/**
 	 * @return the load
 	 */
-	public int getLoad() {
-		return load;
+	public int getILoad() {
+		return iload;
 	}
 
 	/**
 	 * @param load the load to set
 	 */
-	public void setLoad(int load) {
-		this.load = load;
+	public void setILoad(int load) {
+		this.iload = load;
 	}
 
 	/**

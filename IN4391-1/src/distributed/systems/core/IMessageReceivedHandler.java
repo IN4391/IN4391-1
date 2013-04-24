@@ -1,4 +1,6 @@
 package distributed.systems.core;
+
+import java.rmi.Remote;
 /**
  * Software written for the Distributed Systems Lab course.
  * 
@@ -16,12 +18,12 @@ package distributed.systems.core;
  * to receive notifications when a message is
  * received.
  */
-public interface IMessageReceivedHandler {
+public interface IMessageReceivedHandler extends Remote{
 	/**
 	 * Called when a message has been received by 
 	 * the underlying socket.
 	 * 
 	 * @param message is the message received.
 	 */
-	public void onMessageReceived(Message message);
+	public void onMessageReceived(Message message) throws java.rmi.RemoteException;
 }

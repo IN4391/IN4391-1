@@ -11,11 +11,14 @@ public enum ControlMessageType {
 
 	// from RM to GS
 	ResourceManagerJoin,
+	RequestGSes,
 	ReplyLoad,
 	Retry,
 
 	// from GS to RM
 	RequestLoad,
+	
+	ReplyGS,
 	
 	JoiningGS,
 	
@@ -23,6 +26,7 @@ public enum ControlMessageType {
 
 	// both ways
 	AddJob,
+	SpawnJob,
 	
 	// from GS to GS
 	UpdateView,
@@ -35,6 +39,12 @@ public enum ControlMessageType {
 	
 	NeighborRequest,
 	
-	CrashedGS
+	ForwardRM,
+	
+	CrashedGS,
+	
+	Status,
+	
+	ShutDown
 
 }
