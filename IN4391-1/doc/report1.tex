@@ -1,0 +1,47 @@
+\documentclass[twocolumn,a4paper]{article}
+\title{\textbf{IN4391 Distributed Computing Systems \\ Lab Exercise A}}
+\author{Anass Drif(4030532) \and Matthijs van Dorth(1265911)}
+
+
+\usepackage{amsmath}
+\usepackage{epsfig}
+
+\begin{document}
+\maketitle
+
+
+\begin{abstract}
+In this article we explain the extensions we made to the Virtual Grid Simulator. With these extensions the Grid Simulator is now a distributed application that can run across multiple different machines. Because of the distributed nature of the application it is now possible to scale the application in using even more and larger virtual clusters. Besides the distributed setup enables a more resilient application since the failing of one or more components doesn't necessarily mean the application will fail. How both the scaling and the fault tolerance is achieved is explained in the following article.
+\end{abstract}
+
+\section{Introduction}
+As today's cluster grow larger and and larger, spanning multiple organizations, sometimes even on multiple continents, these clusters get harder and harder to manage. A Gridscheduler is a machine that assigns jobs to different nodes on a cluster. As a single machine can't handle a very large amount of clusters and it has a single point of failure, this isn't the best way to manage all these clusters. To overcome this problem we provide a distributed solution, where multiple Gridschedulers work together to manage the clusters that is both scalable and tolerant when one or more machine fail.
+
+\section{Background}
+The initial Virtual Grid Simulator consisted of a single GridScheduler that managed multiple clusters. Each cluster had a single Resource Manager that is responsible for the scheduling of jobs on individual nodes in the cluster. Jobs are offered to this Resource Manager and it has the option to either accept a job for execution on its own cluster or to offload it to the GridScheduler when the cluster exceeded a certain threshold. The responsibility of the job is than handed over to the GridScheduler for further processing of this job.
+
+\subsection{Scalability}
+Due to the fact that a single GridScheduler can only handle a few clusters, the basic application wasn't very scalable. To be able to manage many clusters, multiple GridSchedulers are needed. We implemented a  GridSchedulerNode that could be deployed on different machines and when working together is able to manage many clusters. Each GridSchedulerNode has a Queue that consists of Jobs that have not finished yet. 
+
+\subsection{Fault Tolerance}
+
+
+\subsection{Bonus Features}
+We think the solutions found in this study may benefit other people as well that face similar problems in fault tolerance or scalability. Therefore the complete source code for the Distributed Grid Scheduler is open source and can be found on GitHub [note].  
+
+\section{Results}
+
+
+\subsection{Experimental Setup}
+To see how the improved version of the Gridscheduler performed, we conducted a few experiments on the DAS supercomputer located at the TU Delft [note]. Jobs where simulated on different clusters having a variable time between 4?? and 12?? seconds. The jobs were send to the Resourcemanagers at different rates to see how they performed. We used different amounts of Schedulers to see how different they perform and to estimate how well this solution scales. 
+
+\subsection{Experiments}
+
+
+\section{Discussion}
+
+\section{Conclusion}
+
+\section{Appendix A: Time Sheets}
+
+\end{document}
