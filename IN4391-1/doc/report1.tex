@@ -1,0 +1,49 @@
+\documentclass[twocolumn,a4paper]{article}
+\title{\textbf{IN4391 Distributed Computing Systems \\ Lab Exercise A}}
+\author{Anass Drif(4030532) \and Matthijs van Dorth(1265911)}
+
+\usepackage{amsmath}
+\usepackage{epsfig}
+
+\begin{document}
+\maketitle
+
+
+\begin{abstract}
+In this article we explain the extensions we made to the Virtual Grid Simulator. With these extensions the Grid Simulator is now a distributed application that can run across multiple different machines. Because of the distributed nature of the application it is now possible to scale the application in using even more and larger virtual clusters. Besides the distributed setup enables a more resilient application since the failing of one or more components doesn't necessarily mean the application will fail. How both the scaling and the fault tolerance is achieved is explained in the following article as well as how we did some initial testing in a distributed environment.
+\end{abstract}
+
+\section{Introduction}
+As today's cluster grow larger and and larger, spanning multiple organizations, sometimes even on multiple continents, these clusters get harder and harder to manage. A gridscheduler is a machine that assigns jobs to different nodes on a cluster. As a single machine can't handle a very large amount of clusters and it has a single point of failure, this isn't the best way to manage all these clusters. To overcome this problem we provide a distributed solution, where multiple gridschedulers work together to manage the clusters that is both scalable and tolerant when one or more machine fail. The main goal of the newly developed gridscheduler was a gridscheduler that is both scalable and fault tolerant. 
+
+\section{Implementation}
+The initial Virtual Grid Simulator consisted of a single GridScheduler that managed multiple clusters. Each cluster had a single Resource Manager that is responsible for the scheduling of jobs on individual nodes in the cluster. Jobs are offered to this Resource Manager and it has the option to either accept a job for execution on its own cluster or to offload it to the GridScheduler when the cluster exceeded a certain threshold. The responsibility of the job is than handed over to the GridScheduler for further processing of this job.
+When a distributed gridscheduler is to be used, the problem arises that every job needs to be assigned a specific gridscheduler node. This has to be done in such a way that all jobs are equally divided among the nodes, so that no individual node gets overloaded with too many jobs. On the other hand, the system needs to be fault tolerant, which means replicating jobs so that in case one node fails or breaks down the job isn't lost. This however will cause that more jobs are circulated around which will cause a more heavy load on all the nodes.
+All the gridscheduler nodes are connected to each other using a bidirectional ring. This reduces the need for sending unnecessarily many messages around. A node can send controlmessages upstream and downstream. The RecourceManager of each cluster delivers a job to a the gridscheduler [randomly/ round robin]. How the two most important aspects of the distributed gridscheduler are implemented will be explained in the next two subsections.
+
+\subsection{Scalability}
+Due to the fact that a single GridScheduler can only handle a few clusters, the basic application wasn't very scalable. To be able to manage many clusters, multiple GridSchedulers are needed. We implemented a  GridSchedulerNode that could be deployed on different machines and when working together is able to manage many clusters. Each GridSchedulerNode has a Queue that consists of Jobs that have not finished yet. Each gridscheduler is responsible for the execution of the jobs that are in its Queue. To be able to scale well, all the nodes need to have about the same amount of jobs in its Queue. It is therefore important that all the nodes know what the load is in each node. This is done by passing controlmessages around which contain the load of the nodes. Gridschedulers can offload jobs to other gridschedulers when it passes a certain threshold when it currently has too many jobs waiting.
+Using this technique we make sure that all the nodes have more or less the same load and this should scale the application in a correct way.
+
+\subsection{Fault Tolerance}
+Unfortunately the nodes in the system are not completely resilient against faults, or failures. A node can suddenly crash and loose all of the contents of its Queue. Because you want all jobs sent to the system will be returned when they are finished the jobs need to be backed up somewhere in case a node breaks down. The solution here is to backup all jobs on another node and distribute this backup to all other nodes when a node has failed. The new problem now is, how to detect when a node has crashed? Our solution is to give the responsibility of detecting whether or not a node is crashed to the original upstream and downstream of the node. If both these nodes agree that the node between them has crashed, they will broadcast the fact that this node is no longer available and make a new connection between them so that the bidirectional ring is connected again.
+
+\subsection{Bonus Features}
+Besides the scalability and the fault tolerance, we did some additional work to improve this system. Because we think the solutions found in this study may benefit other people as well that face similar problems in fault tolerance or scalability. Therefore the complete source code for the Distributed Grid Scheduler is open source and can be found on GitHub [https://github.com/IN4391/IN4391-1].
+
+\section{Experimental Setup}
+To see how the improved version of the gridscheduler performed, we conducted a few experiments on the DAS supercomputer located at the TU Delft [note]. Jobs where simulated on different clusters having a variable time between 4 and 12 seconds. The jobs were send to the resourcemanagers at different rates to see how they performed. We used different amounts of Schedulers to see how different they perform and to estimate how well this solution scales.
+% - explain amount nodes
+% - explain what is on each node
+% - setup of gridschedulers
+% - getting to 100.000 clusternodes
+
+\section{Results}
+After extensive testing we came to the following results...
+
+\section{Discussion and Future work}
+
+
+\section{Conclusion}
+
+\end{document}
