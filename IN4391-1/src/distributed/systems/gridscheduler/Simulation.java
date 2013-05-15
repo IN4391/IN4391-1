@@ -101,7 +101,7 @@ public class Simulation extends UnicastRemoteObject implements Runnable {
 		
 		// Startup delay to make sure all GS nodes have started
 		try {
-			Thread.sleep(3000);
+			Thread.sleep(5000);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -148,6 +148,13 @@ public class Simulation extends UnicastRemoteObject implements Runnable {
 			ControlMessage cMessage = new ControlMessage(ControlMessageType.SpawnJob);
 			cMessage.setJob(job);
 			sendMessage(cMessage, clusters[0].getName());
+			
+			if (jobId == 250)
+			{
+				System.out.println("sending shutdown message");
+				ControlMessage sMessage = new ControlMessage(ControlMessageType.ShutDown);
+				sendMessage(sMessage, "scheduler2");
+			}
 			//clusters[0].getResourceManager().addJob(job);
 			//gs.spawnJob();
 			

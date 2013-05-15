@@ -22,6 +22,8 @@ public enum ControlMessageType {
 	
 	JoiningGS,
 	
+	GSDown,
+	
 	Roger,
 
 	// both ways
@@ -38,6 +40,10 @@ public enum ControlMessageType {
 	BulkJob,
 	
 	NeighborRequest,
+	
+	MaintenanceCheck,
+	
+	MaintenanceDone,
 	
 	ForwardRM,
 	
