@@ -15,6 +15,11 @@ public class Clusters {
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		
+		if (args.length < 1) {
+			System.err.println("Please specify the nr of clusters");
+			return;
+		}
 		long seed = System.currentTimeMillis();
 		Random generator = new Random(seed);
 		int r;
@@ -29,7 +34,7 @@ public class Clusters {
 					p.destroy();
 			}
 		});
-		//System.setProperty("java.security.policy", "my.policy");
+		System.setProperty("java.security.policy", "my.policy");
 		//if (System.getSecurityManager() == null) {
 			//System.setSecurityManager(new RMISecurityManager());
 		//}

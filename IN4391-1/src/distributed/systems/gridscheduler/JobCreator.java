@@ -6,6 +6,7 @@ import java.rmi.NotBoundException;
 import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.Arrays;
 import java.util.Scanner;
 
 import distributed.systems.core.IMessageReceivedHandler;
@@ -21,15 +22,16 @@ public class JobCreator extends UnicastRemoteObject implements IMessageReceivedH
 	private int nrClusters;
 	static private SynchronizedSocket socket;
 	
-	String registry;
+	static String registry;
 	
 	// polling thread
 	private Thread pollingThread;
 	private boolean running;
 	
-	public JobCreator(int nrClusters) throws RemoteException 
+	public JobCreator(int nrClusters, String registry) throws RemoteException 
 	{
 		this.nrClusters = nrClusters;
+		this.registry = registry;
 		
 		
 		/*LocalSocket lSocket = new LocalSocket();
@@ -40,14 +42,14 @@ public class JobCreator extends UnicastRemoteObject implements IMessageReceivedH
 		
 		// Bind the node to the RMI registry.
 		try {
-			java.rmi.Naming.bind("JobCreator", this);
+			java.rmi.Naming.bind("rmi://"+registry+":1099/JobCreator", this);
 		} catch (MalformedURLException e) {
 			e.printStackTrace();
 		} catch (AlreadyBoundException e) {
 			e.printStackTrace();
 		}
 				
-		final String name = "JobCreator";
+		final String name = "rmi://"+registry+":1099/JobCreator";
 		
 				
 		// Let the node unregister from RMI registry on shut down.
@@ -173,20 +175,20 @@ public class JobCreator extends UnicastRemoteObject implements IMessageReceivedH
 	 */
 	public static void main(String[] args) throws RemoteException {
 		
-		if (args.length < 1) {
+		if (args.length < 2) {
 			System.err.println("Please specify the nr of clusters");
 			return;
 		}
 		
 		final int nrClusters = Integer.parseInt(args[0]);
-		registry = args[1];
+		//registry = args[1];
 		
 		System.setProperty("java.security.policy", "file:./my.policy");
 		if (System.getSecurityManager() == null) {
-			System.setSecurityManager(new RMISecurityManager());
+			//System.setSecurityManager(new RMISecurityManager());
 		}
 		
-		JobCreator jc = new JobCreator(nrClusters);
+		JobCreator jc = new JobCreator(nrClusters, args[1]);
 		
 		jc.startPollThread();
 		

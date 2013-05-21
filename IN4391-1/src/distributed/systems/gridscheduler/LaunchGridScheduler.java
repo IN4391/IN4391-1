@@ -13,7 +13,7 @@ public class LaunchGridScheduler {
 	 */
 	public static void main(String[] args) throws RemoteException {
 		
-		if (args.length < 1) {
+		if (args.length < 4) {
 			System.err.println("Please specify the ID of this GridScheduler!");
 			return;
 		}
@@ -22,14 +22,16 @@ public class LaunchGridScheduler {
 		final int downstream_gid = Integer.parseInt(args[1]);
 		final int upstream_gid 	 = Integer.parseInt(args[2]);
 		
+		
 		// Create and install a security manager
 		System.setProperty("java.security.policy", "file:./my.policy");
-		if (System.getSecurityManager() == null) {
-			System.setSecurityManager(new RMISecurityManager());
-		}
+		//if (System.getSecurityManager() == null) {
+			//System.setSecurityManager(new RMISecurityManager());
+		//}
 		
 		try {
-			GridScheduler gs = new GridScheduler("scheduler" + gid, "scheduler" + downstream_gid, "scheduler" + upstream_gid);
+			//System.out.println("Launch1");
+			GridScheduler gs = new GridScheduler("scheduler" + gid, "scheduler" + downstream_gid, "scheduler" + upstream_gid, args[3]);
 		} catch (RemoteException e) {
 			e.printStackTrace();
 		}

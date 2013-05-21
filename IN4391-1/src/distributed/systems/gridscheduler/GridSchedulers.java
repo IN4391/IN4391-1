@@ -14,11 +14,16 @@ public class GridSchedulers {
 	 * @param args
 	 */
 	public static void main(String[] args) throws RemoteException {
-		
+		/*
 		try {
 			java.rmi.registry.LocateRegistry.createRegistry(1099);
 		} catch (RemoteException e) {
 			e.printStackTrace();
+		}
+		*/
+		if (args.length < 1) {
+			System.err.println("Please specify the registry of this Scheduler!");
+			return;
 		}
 		
 		// Create GridScheduler processes
@@ -38,7 +43,7 @@ public class GridSchedulers {
 		
 		ProcessBuilder pb;
 		for (int i = 0; i < 5; i++) {
-			pb = new ProcessBuilder("java", "-jar", "LaunchGridScheduler.jar", i + "", ((i + 1) % 5) + "", ((i - 1 + 5) % 5) + "");
+			pb = new ProcessBuilder("java", "-jar", "LaunchGridScheduler.jar", i + "", ((i + 1) % 5) + "", ((i - 1 + 5) % 5) + "", args[0]);
 			pb.redirectErrorStream();
 			try {
 				processes.add(pb.start());

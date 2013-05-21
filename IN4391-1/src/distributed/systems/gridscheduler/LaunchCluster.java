@@ -26,12 +26,12 @@ public class LaunchCluster {
 		
 		// Create and install a security manager
 		System.setProperty("java.security.policy", "file:./my.policy");
-		if (System.getSecurityManager() == null) {
-			System.setSecurityManager(new RMISecurityManager());
-		}
+		//if (System.getSecurityManager() == null) {
+			//System.setSecurityManager(new RMISecurityManager());
+		//}
 		
 		try {
-			Cluster c = new Cluster("cluster" + cid, "scheduler" + grid_scheduler, nrNodes);
+			Cluster c = new Cluster("cluster" + cid, "scheduler" + grid_scheduler, nrNodes, args[3]);
 		} catch (RemoteException e) {
 			e.printStackTrace();
 		}

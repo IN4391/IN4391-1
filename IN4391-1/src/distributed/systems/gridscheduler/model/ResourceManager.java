@@ -7,6 +7,7 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Queue;
@@ -131,7 +132,9 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 		
 		// Bind the node to the RMI registry.
 		try {
-			java.rmi.Naming.bind(socketURL, this);
+			System.out.println("Binding to: "+registry);
+			System.out.println("Register: " + Arrays.toString(java.rmi.Naming.list(registry)));
+			java.rmi.Naming.bind("rmi://"+registry+":1099/"+socketURL, this);
 		} catch (MalformedURLException e) {
 			e.printStackTrace();
 		} catch (AlreadyBoundException e) {
@@ -142,7 +145,7 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 			e.printStackTrace();
 		}*/
 				
-		final String name = socketURL;
+		final String name = "rmi://"+registry+":1099/"+socketURL;
 				
 		// Let the node unregister from RMI registry on shut down.
 		Runtime.getRuntime().addShutdownHook(new Thread() {

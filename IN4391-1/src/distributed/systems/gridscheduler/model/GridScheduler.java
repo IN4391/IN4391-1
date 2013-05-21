@@ -7,6 +7,7 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -76,6 +77,8 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 	private Thread pollingThread;
 	private boolean running;
 	
+	String registry;
+	
 	/**
 	 * Constructs a new GridScheduler object at a given url.
 	 * <p>
@@ -86,11 +89,12 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 	 * @param url the gridscheduler's url to register at
 	 * @throws RemoteException 
 	 */
-	public GridScheduler(String url, String downstream, String upstream) throws RemoteException {
+	public GridScheduler(String url, String downstream, String upstream, String registry) throws RemoteException {
 		// preconditions
 		assert(url != null) : "parameter 'url' cannot be null";
 		
 		// init members
+		this.registry = registry;
 		this.url = url;
 		this.upstream_neighbour = upstream;
 		this.downstream_neighbour = downstream;
@@ -137,12 +141,14 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 		
 		// Bind the node to the RMI registry.
 		try {
-			java.rmi.Naming.bind(url, this);
+			System.out.println("Register: " + Arrays.toString(java.rmi.Naming.list(registry)));
+			java.rmi.Naming.rebind("rmi://"+registry+":1099/"+url, this);
+			System.out.println("RMI: " + Arrays.toString(java.rmi.Naming.list("rmi://"+registry+":1099/"+url)));
 		} catch (MalformedURLException e) {
 			e.printStackTrace();
-		}  catch (AlreadyBoundException e) {
-			e.printStackTrace();
-		}   
+		}  //catch (AlreadyBoundException e) {
+			//e.printStackTrace();
+		//}   
 		
 		/*catch (MalformedURLException | AlreadyBoundException e) {
 			e.printStackTrace();
@@ -202,11 +208,19 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 			logger.info("Wtf wie heet null");
 		} else{
 		try {
-			IMessageReceivedHandler stub = (IMessageReceivedHandler) java.rmi.Naming.lookup(url);
+			IMessageReceivedHandler stub = (IMessageReceivedHandler) java.rmi.Naming.lookup("rmi://"+registry+":1099/"+url);
 			stub.onMessageReceived(m);
-		} catch (Exception e) {
-			logger.info(this.url + ": " + e.getClass() + "|" + url);
+		} catch (MalformedURLException e) {
+			System.out.println((this.url + ": " + e.getClass() + "|" + url));
 			//tmp++;
+		}
+		catch( NotBoundException e){
+			System.out.println((this.url + ": " + e.getClass() + "|" + url));
+			if (!maintenance)
+				nodeLeft(url);
+		}
+		catch(RemoteException e){
+			System.out.println((this.url + ": " + e.getClass() + "|" + url));
 			if (!maintenance)
 				nodeLeft(url);
 		}
@@ -339,6 +353,16 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 		}
 		else if (controlMessage.getType() == ControlMessageType.RequestGSes)
 		{
+			try {
+				System.out.println("Register1: " + Arrays.toString(java.rmi.Naming.list(registry)));
+				System.out.println("Register2: " + Arrays.toString(java.rmi.Naming.list("localhost")));
+			} catch (RemoteException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (MalformedURLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			resourceManagerLoad.put(controlMessage.getUrl(), Integer.MAX_VALUE);
 			
 			ControlMessage fMessage = new ControlMessage(ControlMessageType.ForwardRM);
