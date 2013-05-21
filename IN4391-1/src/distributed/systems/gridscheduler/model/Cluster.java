@@ -38,7 +38,7 @@ public class Cluster implements Runnable {
 	 * @param nrNodes the number of nodes in this cluster
 	 * @throws RemoteException 
 	 */
-	public Cluster(String name, String gridSchedulerURL, int nodeCount) throws RemoteException {
+	public Cluster(String name, String gridSchedulerURL, int nodeCount, String registry) throws RemoteException {
 		// Preconditions
 		assert(name != null) : "parameter 'name' cannot be null";
 		assert(gridSchedulerURL != null) : "parameter 'gridSchedulerURL' cannot be null";
@@ -50,7 +50,7 @@ public class Cluster implements Runnable {
 		nodes = new ArrayList<Node>(nodeCount);
 		System.out.println("Whos up in this clusta");
 		// Initialize the resource manager for this cluster
-		resourceManager = new ResourceManager(this, gridSchedulerURL);
+		resourceManager = new ResourceManager(this, gridSchedulerURL, registry);
 		
 		// Initialize the nodes 
 		for (int i = 0; i < nodeCount; i++) {

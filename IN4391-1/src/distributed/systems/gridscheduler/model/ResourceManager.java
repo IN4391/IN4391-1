@@ -62,6 +62,7 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 
 	// Scheduler url
 	private String gridSchedulerURL = null;
+	private String registry;
 
 	private SynchronizedSocket socket;
 
@@ -75,7 +76,7 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 	 * @param cluster the cluster to wich this resource manager belongs.
 	 * @throws RemoteException 
 	 */
-	public ResourceManager(Cluster cluster, String gridscheduler) throws RemoteException	{
+	public ResourceManager(Cluster cluster, String gridscheduler, String registry) throws RemoteException	{
 		// preconditions
 		assert(cluster != null);
 		//logger.info("RM in da house");
@@ -89,6 +90,7 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 		
 		this.gridschedulers.add(gridscheduler);
 		
+		this.registry = registry;
 		// Number of jobs in the queue must be larger than the number of nodes, because
 		// jobs are kept in queue until finished. The queue is a bit larger than the 
 		// number of nodes for efficiency reasons - when there are only a few more jobs than
@@ -180,7 +182,7 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 	public void sendMessage(Message m, String url)
 	{
 		try {
-			IMessageReceivedHandler stub = (IMessageReceivedHandler) java.rmi.Naming.lookup(url);
+			IMessageReceivedHandler stub = (IMessageReceivedHandler) java.rmi.Naming.lookup("rmi://"+registry+":1099/"+url);
 			stub.onMessageReceived(m);
 		} catch (MalformedURLException e) {
 			e.printStackTrace();

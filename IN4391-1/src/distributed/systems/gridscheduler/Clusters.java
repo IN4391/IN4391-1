@@ -20,7 +20,7 @@ public class Clusters {
 		int r;
 		Scanner scan = new Scanner(System.in);
 		final ArrayList<Process> pclusters = new ArrayList<Process>();
-		
+		String registry = args[0];
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			@Override
 			public void run() {
@@ -38,7 +38,7 @@ public class Clusters {
 		// Create Cluster processes
 		for (int i = 0; i < 5; i++) {
 			r = generator.nextInt(5);
-			pb = new ProcessBuilder("java", "-jar", "LaunchCluster.jar", i + "", r + "", 50 + "");
+			pb = new ProcessBuilder("java", "-jar", "LaunchCluster.jar", i + "", r + "", 50 + "", registry);
 			pb.redirectErrorStream();
 			try {
 				pclusters.add(pb.start());

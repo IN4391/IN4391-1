@@ -21,6 +21,8 @@ public class JobCreator extends UnicastRemoteObject implements IMessageReceivedH
 	private int nrClusters;
 	static private SynchronizedSocket socket;
 	
+	String registry;
+	
 	// polling thread
 	private Thread pollingThread;
 	private boolean running;
@@ -77,7 +79,7 @@ public class JobCreator extends UnicastRemoteObject implements IMessageReceivedH
 	public static void sendMessage(Message m, String url)
 	{
 		try {
-			IMessageReceivedHandler stub = (IMessageReceivedHandler) java.rmi.Naming.lookup(url);
+			IMessageReceivedHandler stub = (IMessageReceivedHandler) java.rmi.Naming.lookup("rmi://"+registry+":1099/"+url);
 			stub.onMessageReceived(m);
 		} catch (MalformedURLException e) {
 			e.printStackTrace();
@@ -177,6 +179,7 @@ public class JobCreator extends UnicastRemoteObject implements IMessageReceivedH
 		}
 		
 		final int nrClusters = Integer.parseInt(args[0]);
+		registry = args[1];
 		
 		System.setProperty("java.security.policy", "file:./my.policy");
 		if (System.getSecurityManager() == null) {
