@@ -1,5 +1,6 @@
 package distributed.systems.gridscheduler;
 
+import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
 
 import distributed.systems.gridscheduler.model.Cluster;
@@ -22,6 +23,11 @@ public class LaunchCluster {
 		final int nrNodes 	 	    = Integer.parseInt(args[2]);
 		
 		System.out.println("We launching something here");
+		
+		// Create and install a security manager
+		/*if (System.getSecurityManager() == null) {
+		System.setSecurityManager(new RMISecurityManager());
+		}*/
 		
 		try {
 			Cluster c = new Cluster("cluster" + cid, "scheduler" + grid_scheduler, nrNodes);

@@ -22,7 +22,20 @@ public class GridSchedulers {
 		}
 		
 		// Create GridScheduler processes
-		ArrayList<Process> processes = new ArrayList<Process>();
+		final ArrayList<Process> processes = new ArrayList<Process>();
+				
+				Runtime.getRuntime().addShutdownHook(new Thread() {
+					@Override
+					public void run() {
+						System.out.println("Shutting down GridSchedulers process.");
+						for (Process p : processes)
+							p.destroy();
+					}
+				});
+		
+		System.out.println("Creating GS nodes..");
+		
+		
 		ProcessBuilder pb;
 		for (int i = 0; i < 5; i++) {
 			pb = new ProcessBuilder("java", "-jar", "LaunchGridScheduler.jar", i + "", ((i + 1) % 5) + "", ((i - 1 + 5) % 5) + "");
@@ -48,14 +61,25 @@ public class GridSchedulers {
 					try {
 						while((line = bf.readLine()) != null) {
 							System.out.println(line);
+						System.out.println("We done here.");
 						}
 					} catch (IOException e) {}
 				}
 			};
 			t.start();
 		}
-			
-			Scanner scan = new Scanner(System.in);
+		
+		System.out.println("Waiting for process to end");
+		Process p = processes.get(0);
+		try {
+			p.waitFor();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		
+		System.out.println("End of gridschedulers process");
+		return;
+		//	Scanner scan = new Scanner(System.in);
 		/*	scan.nextInt();
 			pb = new ProcessBuilder("java", "-jar", "LaunchGridScheduler.jar", 1 + "", ((1 + 1) % 3) + "", ((1 - 1 + 3) % 3) + "");
 			pb.redirectErrorStream();
@@ -114,7 +138,7 @@ public class GridSchedulers {
 				};
 				t2.start();
 			*/
-			scan.nextInt();
+			//scan.nextInt();
 			
 			//Process pizza = null;
 			/*int a = 2;
@@ -150,9 +174,7 @@ public class GridSchedulers {
 			
 			/*scan.nextInt();
 			pizza.destroy();*/
-			for (Process p : processes)
-				p.destroy();
-
+			
 	}
 
 }

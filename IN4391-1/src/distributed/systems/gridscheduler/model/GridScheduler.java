@@ -1,5 +1,6 @@
 package distributed.systems.gridscheduler.model;
 
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.rmi.AlreadyBoundException;
 import java.rmi.NotBoundException;
@@ -15,6 +16,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.FileHandler;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 import distributed.systems.core.IMessageReceivedHandler;
 import distributed.systems.core.Message;
@@ -58,6 +62,12 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 	// timer
 	private boolean timer;
 	private boolean maintenance;
+	
+	// logger
+	Logger logger;  
+    FileHandler fh;  
+    
+    int tmp;
 
 	// polling frequency, 1hz
 	private long pollSleep = 1000;
@@ -88,7 +98,7 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 		this.jobQueue = new ConcurrentLinkedQueue<Job>();
 		this.gridschedulers = new ArrayList<String>();
 		this.jobId = 0;
-		System.out.println("Like wtf is going on?");
+		//logger.info("Like wtf is going on?");
 		// create a messaging socket
 		/*LocalSocket lSocket = new LocalSocket();
 		socket = new SynchronizedSocket(lSocket);
@@ -103,12 +113,40 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 		// In this way, messages can be sent between components by name.
 		//socket.register(url);
 		
+		logger = Logger.getLogger("MyLog");
+		
+		try {  
+			tmp = 0;
+            // This block configure the logger with handler and formatter  
+            fh = new FileHandler(this.getUrl() + "LogFile.log");  
+            logger.addHandler(fh);  
+            //logger.setLevel(Level.ALL);  
+            SimpleFormatter formatter = new SimpleFormatter();  
+            fh.setFormatter(formatter);  
+            
+            logger.setUseParentHandlers(false);
+            
+            // the following statement is used to log any messages  
+            logger.info("Opening log for " + this.getUrl());  
+              
+        } catch (SecurityException e) {  
+            e.printStackTrace();  
+        } catch (IOException e) {  
+            e.printStackTrace();  
+        }  
+		
 		// Bind the node to the RMI registry.
 		try {
 			java.rmi.Naming.bind(url, this);
-		} catch (MalformedURLException | AlreadyBoundException e) {
+		} catch (MalformedURLException e) {
 			e.printStackTrace();
-		}
+		}  catch (AlreadyBoundException e) {
+			e.printStackTrace();
+		}   
+		
+		/*catch (MalformedURLException | AlreadyBoundException e) {
+			e.printStackTrace();
+		}*/
 		
 		final String name = url;
 		
@@ -125,6 +163,8 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 			}
 		});
 	
+		//System.out.println(this.url + "started!");
+		
 		// start the polling thread
 		running = true;
 		pollingThread = new Thread(this);
@@ -159,31 +199,30 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 	{
 		if (url == null)
 		{
-			System.out.println("Wtf wie heet null");
+			logger.info("Wtf wie heet null");
 		} else{
 		try {
 			IMessageReceivedHandler stub = (IMessageReceivedHandler) java.rmi.Naming.lookup(url);
 			stub.onMessageReceived(m);
-		} catch (MalformedURLException | RemoteException
-				| NotBoundException | NullPointerException e) {
-			
-			System.out.println(this.url + ": " + e.getClass() + "|" + url);
+		} catch (MalformedURLException | NotBoundException | NullPointerException | RemoteException e) {
+			logger.info(this.url + ": " + e.getClass() + "|" + url);
+			//tmp++;
 			if (!maintenance)
 				nodeLeft(url);
-			//e.printStackTrace();
-		}}
+		}
+		}
 	}
 	
 	public void nodeLeft(String gs)
 	{
 		maintenance = true;
 		System.out.println("Node down! Overlay repair in progres..");
-		String tmp = this.getUrl() + " Known clusters: ";
+		/*String tmp = this.getUrl() + " Known clusters: ";
 		for (String s : resourceManagerLoad.keySet())
 		{
 			tmp += s + ", ";
 		}
-		System.out.println(tmp);
+		logger.info(tmp);*/
 		for (String s : resourceManagerLoad.keySet())
 		{
 			System.out.println("Informing " + s + ".");
@@ -191,6 +230,7 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 			cMessage.setUrl(this.getUrl());
 			cMessage.setSLoad(gs);
 			sendMessage(cMessage, s);
+			//socket.sendMessage(cMessage, "localsocket://" + s);
 		}
 		
 		if (gs.equals(downstream_neighbour) || gs.equals(upstream_neighbour))
@@ -214,6 +254,7 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 				cMessage2.setLoad(this.getUrl());
 				cMessage2.setSLoad(gs);
 				sendMessage(cMessage2, upstream_neighbour);
+				//socket.sendMessage(cMessage2, "localsocket://" + upstream_neighbour);
 			}
 			else
 			{
@@ -234,6 +275,7 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 				cMessage2.setLoad(this.getUrl());
 				cMessage2.setSLoad(gs);
 				sendMessage(cMessage2, downstream_neighbour);
+				//socket.sendMessage(cMessage2, "localsocket://" + downstream_neighbour);
 			}
 		}
 		else
@@ -275,8 +317,7 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 		// no jobs are scheduled to it until we know the actual load
 		if (controlMessage.getType() == ControlMessageType.ResourceManagerJoin)
 			resourceManagerLoad.put(controlMessage.getUrl(), Integer.MAX_VALUE);
-		
-		if (controlMessage.getType() == ControlMessageType.ForwardRM)
+		else if (controlMessage.getType() == ControlMessageType.ForwardRM)
 		{	
 			String origin = (String)controlMessage.getLoad();
 			
@@ -296,8 +337,7 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 				//socket.sendMessage(fMessage, "localsocket://" + downstream_neighbour);
 			}
 		}
-		
-		if (controlMessage.getType() == ControlMessageType.RequestGSes)
+		else if (controlMessage.getType() == ControlMessageType.RequestGSes)
 		{
 			resourceManagerLoad.put(controlMessage.getUrl(), Integer.MAX_VALUE);
 			
@@ -308,9 +348,8 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 			sendMessage(fMessage, downstream_neighbour);
 			//socket.sendMessage(fMessage, "localsocket://" + downstream_neighbour);
 		}
-		
 		// resource manager wants to offload a job to us 
-		if (controlMessage.getType() == ControlMessageType.AddJob)
+		else if (controlMessage.getType() == ControlMessageType.AddJob)
 		{
 			jobQueue.add(controlMessage.getJob());
 			ControlMessage cMessage = new ControlMessage(ControlMessageType.Roger);
@@ -319,12 +358,10 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 			sendMessage(cMessage, controlMessage.getUrl());
 			//socket.sendMessage(cMessage, "localsocket://" + controlMessage.getUrl());
 		}
-			
 		// resource manager told us his load 
-		if (controlMessage.getType() == ControlMessageType.ReplyLoad)
+		else if (controlMessage.getType() == ControlMessageType.ReplyLoad)
 			resourceManagerLoad.put(controlMessage.getUrl(),controlMessage.getILoad());
-		
-		if (controlMessage.getType() == ControlMessageType.UpdateView)
+		else if (controlMessage.getType() == ControlMessageType.UpdateView)
 		{
 			String origin = controlMessage.getSLoad();
 			if (!origin.equals(this.getUrl()) && !maintenance)
@@ -338,19 +375,17 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 				//socket.sendMessage(uMessage, "localsocket://" + downstream_neighbour);
 			}
 		}
-		
-		if (controlMessage.getType() == ControlMessageType.BulkJob)
+		else if (controlMessage.getType() == ControlMessageType.BulkJob)
 		{
-			System.out.println(url + "|: " + jobQueue.size());
+			logger.info(url + "|: " + jobQueue.size());
 			ArrayList<Job> temp = controlMessage.getJobs();
 			for (Job j : temp)
 				jobQueue.add(j);
 			
-			System.out.println(url + ": " + jobQueue.size());
+			logger.info(url + ": " + jobQueue.size());
 		}
-		
 		// resource manager wants to offload a job to us 
-		if (controlMessage.getType() == ControlMessageType.Retry)
+		else if (controlMessage.getType() == ControlMessageType.Retry)
 		{
 			jobQueue.add(controlMessage.getJob());
 			ControlMessage cMessage = new ControlMessage(ControlMessageType.Roger);
@@ -362,12 +397,12 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 				nodeLeft(controlMessage.getSLoad());
 			}
 		}
-		
 		// node crash recovery 
-		if (controlMessage.getType() == ControlMessageType.CrashedGS)
+		else if (controlMessage.getType() == ControlMessageType.CrashedGS)
 		{
 			if (!maintenance)
 			{
+				System.out.println("Maintenance in execution");
 				maintenance = true;
 				if (controlMessage.getSLoad().equals(downstream_neighbour) || controlMessage.getSLoad().equals(upstream_neighbour))
 				{
@@ -411,15 +446,34 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 				}
 			}
 		}
-		
-		if (controlMessage.getType() == ControlMessageType.ShutDown)
+		else if (controlMessage.getType() == ControlMessageType.RMLeave)
+		{
+			resourceManagerLoad.remove(controlMessage.getUrl());
+			ControlMessage cMessage = new ControlMessage(ControlMessageType.RMDown);
+			cMessage.setUrl(controlMessage.getUrl());
+			cMessage.setSLoad(this.url);
+			sendMessage(cMessage, downstream_neighbour);
+			//socket.sendMessage(cMessage, "localsocket://" + downstream_neighbour);
+		}
+		else if (controlMessage.getType() == ControlMessageType.RMDown)
+		{
+			if (!controlMessage.getSLoad().equals(this.url))
+			{
+				resourceManagerLoad.remove(controlMessage.getUrl());
+				ControlMessage cMessage = new ControlMessage(ControlMessageType.RMDown);
+				cMessage.setUrl(controlMessage.getUrl());
+				cMessage.setSLoad(controlMessage.getSLoad());
+				sendMessage(cMessage, downstream_neighbour);
+				//socket.sendMessage(cMessage, "localsocket://" + downstream_neighbour);
+			}
+		}
+		else if (controlMessage.getType() == ControlMessageType.ShutDown)
 		{
 			System.out.println("Shutting down...");
 			stopPollThread();
 		}
-		
 		// node crash recovery 
-		if (controlMessage.getType() == ControlMessageType.NeighborRequest)
+		else if (controlMessage.getType() == ControlMessageType.NeighborRequest)
 		{
 			if (controlMessage.getSLoad().equals(downstream_neighbour) || controlMessage.getSLoad().equals(upstream_neighbour))
 			{
@@ -442,6 +496,7 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 					cMessage.setUrl(this.getUrl());
 					cMessage.setSLoad(this.getUrl());
 					sendMessage(cMessage, downstream_neighbour);
+					//socket.sendMessage(cMessage, "localsocket://" + downstream_neighbour);
 				}
 				
 			}
@@ -467,8 +522,7 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 				}
 			}
 		}
-		
-		if (controlMessage.getType() == ControlMessageType.MaintenanceDone)
+		else if (controlMessage.getType() == ControlMessageType.MaintenanceDone)
 		{
 			if (!controlMessage.getSLoad().equals(getUrl()))
 			{
@@ -478,18 +532,18 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 				cMessage.setUrl(this.getUrl());
 				cMessage.setSLoad(controlMessage.getSLoad());
 				sendMessage(cMessage, downstream_neighbour);
+				//socket.sendMessage(cMessage, "localsocket://" + downstream_neighbour);
 			}
 		}
-		
-		if (controlMessage.getType() == ControlMessageType.InformQueue)
+		else if (controlMessage.getType() == ControlMessageType.InformQueue)
 		{
 			int size = jobQueue.size();
 			if (size >= controlMessage.getILoad() * 10 || (controlMessage.getILoad() == 0 && size > 10))
 			{
 				ControlMessage hMessage = new ControlMessage(ControlMessageType.BulkJob);
 				hMessage.setUrl(this.getUrl());
-				System.out.println("Bulking from: " + url + "-->" + controlMessage.getUrl());
-				System.out.println(url + "|: " + size);
+				logger.info("Bulking from: " + url + "-->" + controlMessage.getUrl());
+				logger.info(url + "|: " + size);
 				int nrjobs;
 				if (size >= controlMessage.getILoad() * 10)
 					nrjobs = controlMessage.getILoad() * 5;
@@ -508,7 +562,7 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 				hMessage.setJobs(new ArrayList<Job>(bulk));
 				sendMessage(hMessage, controlMessage.getUrl());
 				//socket.sendMessage(hMessage, "localsocket://" + controlMessage.getUrl());
-				System.out.println(url + ": " + jobQueue.size());
+				logger.info(url + ": " + jobQueue.size());
 			}
 			
 		}		
@@ -597,10 +651,12 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 					
 				}
 				
-				//System.out.println(getUrl() + ": " + jobQueue.size());
-				//System.out.println(getUrl() + ": " + downstream_neighbour + "|" + upstream_neighbour);
+				//logger.info(getUrl() + ": " + jobQueue.size());
+				//logger.info(getUrl() + ": " + downstream_neighbour + "|" + upstream_neighbour);
 				
 			}
+			
+			logger.info("JobQueue: " + jobQueue.size());  
 			
 			// sleep
 			try
@@ -610,7 +666,7 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 				assert(false) : "Grid scheduler runtread was interrupted";
 			}
 		}
-		
+		System.out.println("Run method stopped " + this.url);
 	}
 	
 	/**
@@ -619,6 +675,7 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 	 *
 	 */
 	public void stopPollThread() {
+		System.out.println("We stoppin " + this.url);
 		try {
 			java.rmi.Naming.unbind(this.url);
 		} catch (Exception e) {

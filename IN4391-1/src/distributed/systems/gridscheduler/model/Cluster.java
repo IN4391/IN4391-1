@@ -136,6 +136,7 @@ public class Cluster implements Runnable {
 			}
 			
 		}
+		System.out.println("I exited bro don't look at me " + this.url);
 		
 	}
 
@@ -145,6 +146,7 @@ public class Cluster implements Runnable {
 	 */
 	public void stopPollThread() {
 		running = false;
+		System.out.println("Cluster joinin here " + this.url);
 		try {
 			pollingThread.join();
 		} catch (InterruptedException ex) {

@@ -3,6 +3,7 @@ package distributed.systems.gridscheduler;
 import java.net.MalformedURLException;
 import java.rmi.AlreadyBoundException;
 import java.rmi.NotBoundException;
+import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.Scanner;
@@ -37,7 +38,9 @@ public class JobCreator extends UnicastRemoteObject implements IMessageReceivedH
 		// Bind the node to the RMI registry.
 		try {
 			java.rmi.Naming.bind("JobCreator", this);
-		} catch (MalformedURLException | AlreadyBoundException e) {
+		} catch (MalformedURLException e) {
+			e.printStackTrace();
+		} catch (AlreadyBoundException e) {
 			e.printStackTrace();
 		}
 				
@@ -74,8 +77,11 @@ public class JobCreator extends UnicastRemoteObject implements IMessageReceivedH
 		try {
 			IMessageReceivedHandler stub = (IMessageReceivedHandler) java.rmi.Naming.lookup(url);
 			stub.onMessageReceived(m);
-		} catch (MalformedURLException | RemoteException
-				| NotBoundException e) {
+		} catch (MalformedURLException e) {
+			e.printStackTrace();
+		} catch (RemoteException e) {
+			e.printStackTrace();
+		} catch (NotBoundException e) {
 			e.printStackTrace();
 		}
 	}
@@ -93,6 +99,14 @@ public class JobCreator extends UnicastRemoteObject implements IMessageReceivedH
 			sendMessage(cMessage, "cluster0");
 			//socket.sendMessage(cMessage, "localsocket://" + "cluster0");
 			
+			if (jobId == 250)
+			{
+				System.out.println("sending shutdown message");
+				ControlMessage sMessage = new ControlMessage(ControlMessageType.ShutDown);
+				sendMessage(sMessage, "scheduler2");
+				//socket.sendMessage(sMessage, "localsocket://" + "scheduler2");
+			}
+			
 			try {
 				// Sleep a while before creating a new job
 				Thread.sleep(100L);
@@ -101,6 +115,7 @@ public class JobCreator extends UnicastRemoteObject implements IMessageReceivedH
 			}
 			
 		}
+		System.out.println("Run method jobcreator stopped.");
 		
 	}
 	
@@ -111,8 +126,12 @@ public class JobCreator extends UnicastRemoteObject implements IMessageReceivedH
 	 */
 	public void stopPollThread() {
 		running = false;
+		System.out.println("So what's going on?");
 		try {
-			pollingThread.join();
+			if (running)
+				System.out.println("WTF============");
+			else
+				pollingThread.join();
 		} catch (InterruptedException ex) {
 			assert(false) : "JobCreator stopPollThread was interrupted";
 		}
@@ -124,11 +143,23 @@ public class JobCreator extends UnicastRemoteObject implements IMessageReceivedH
 	}
 	
 	public void stopEveryone() {
+		System.out.println("Stopping clusters..");
 		for (int i = 0; i < nrClusters; i++)
 		{
 			ControlMessage cMessage = new ControlMessage(ControlMessageType.ShutDown);
 			sendMessage(cMessage, "cluster" + i);
 			//socket.sendMessage(cMessage, "localsocket://" + "cluster" + i);
+		}
+		System.out.println("Stopping GS nodes..");
+		for (int j = 0; j < 5; j++)
+		{
+			if (j != 2)
+			{
+				System.out.println("Sending to " + j);
+				ControlMessage cMessage = new ControlMessage(ControlMessageType.ShutDown);
+				sendMessage(cMessage, "scheduler" + j);
+				//socket.sendMessage(cMessage, "localsocket://" + "scheduler" + j);
+			}
 		}
 	}
 	
@@ -145,11 +176,20 @@ public class JobCreator extends UnicastRemoteObject implements IMessageReceivedH
 		
 		final int nrClusters = Integer.parseInt(args[0]);
 		
+		// Create and install a security manager
+		/*if (System.getSecurityManager() == null) {
+			System.setSecurityManager(new RMISecurityManager());
+		}*/
+		
 		JobCreator jc = new JobCreator(nrClusters);
 		
 		jc.startPollThread();
 		
-		Thread t2 = new Thread() {
+		Scanner sc = new Scanner(System.in);
+		System.out.println("Enter a number to close application..");
+		sc.nextInt();
+		
+		/*Thread t2 = new Thread() {
       		 public void run() {
          		Scanner sc = new Scanner(System.in);
          		int a = 2;
@@ -171,9 +211,13 @@ public class JobCreator extends UnicastRemoteObject implements IMessageReceivedH
 			t2.join();
 		} catch (InterruptedException e) {
 			e.printStackTrace();
-		}
-     	jc.stopEveryone();
+		}*/
+		System.out.println("Stopping myself..");
      	jc.stopPollThread();
+		System.out.println("Stopping everyone..");
+     	jc.stopEveryone();
+     	System.out.println("This is the end see ya");
+     	return;
 	}
 
 }

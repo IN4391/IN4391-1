@@ -7,6 +7,7 @@ import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.Scanner;
 
 import javax.swing.JFrame;
 
@@ -121,18 +122,29 @@ public class Simulation extends UnicastRemoteObject implements Runnable {
 		// Open the gridscheduler panel
 		gridSchedulerPanel.start();
 		
+		Thread t2 = new Thread() {
+     		 public void run() {
+        		Scanner sc = new Scanner(System.in);
+        		sc.nextInt();
+        		gridSchedulerPanel.setVisible(false);
+     		 }
+    	};
+    	t2.start();
+		
 		// Run the simulation
 		Thread runThread = new Thread(this);
 		runThread.run(); // This method only returns after the simulation has ended
-		
+		System.out.println("What the hell are we waiting for?");
 		// Now perform the cleanup
-		
+		gridSchedulerPanel.dispose();
+		stopEveryone();
+		System.out.println("What the hell are we waiting for?2");
 		// Stop clusters
-		for (Cluster cluster : clusters)
+		/*for (Cluster cluster : clusters)
 			cluster.stopPollThread();
 		
 		// Stop grid scheduler
-		scheduler.stopPollThread();
+		scheduler.stopPollThread();*/
 	}
 
 	/**
@@ -166,7 +178,22 @@ public class Simulation extends UnicastRemoteObject implements Runnable {
 			}
 			
 		}
+		System.out.println("Leaving run method.");
 
+	}
+	
+	public void stopEveryone() {
+		for (int i = 0; i < 5; i++)
+		{
+			ControlMessage cMessage = new ControlMessage(ControlMessageType.ShutDown);
+			sendMessage(cMessage, "cluster" + i);
+			//socket.sendMessage(cMessage, "localsocket://" + "cluster" + i);
+		}
+		for (int j = 0; j < 5; j++)
+		{
+			ControlMessage cMessage = new ControlMessage(ControlMessageType.ShutDown);
+			sendMessage(cMessage, "scheduler" + j);
+		}
 	}
 	
 	public void sendMessage(Message m, String url)
@@ -174,8 +201,7 @@ public class Simulation extends UnicastRemoteObject implements Runnable {
 		try {
 			IMessageReceivedHandler stub = (IMessageReceivedHandler) java.rmi.Naming.lookup(url);
 			stub.onMessageReceived(m);
-		} catch (MalformedURLException | RemoteException
-				| NotBoundException e) {
+		} catch (MalformedURLException | RemoteException | NotBoundException e) {
 			e.printStackTrace();
 		}
 	}

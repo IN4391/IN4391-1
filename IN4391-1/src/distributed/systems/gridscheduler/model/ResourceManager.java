@@ -1,5 +1,6 @@
 package distributed.systems.gridscheduler.model;
 
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.rmi.AlreadyBoundException;
 import java.rmi.NotBoundException;
@@ -17,6 +18,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.FileHandler;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 import distributed.systems.core.IMessageReceivedHandler;
 import distributed.systems.core.Message;
@@ -44,12 +48,17 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 	private Queue<Job> jobQueue;
 	private String socketURL;
 	private ArrayList<String> gridschedulers;
+	private ArrayList<String> rr;
 	private Random generator; 
 	private int jobQueueSize;
 	private boolean timer;
 	private boolean maintenance;
 	private HashMap<Integer, Boolean> timers;
 	public static final int MAX_QUEUE_SIZE = 32; 
+	
+	// logger
+	Logger logger;  
+	FileHandler fh;  
 
 	// Scheduler url
 	private String gridSchedulerURL = null;
@@ -69,13 +78,14 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 	public ResourceManager(Cluster cluster, String gridscheduler) throws RemoteException	{
 		// preconditions
 		assert(cluster != null);
-		System.out.println("RM in da house");
+		//logger.info("RM in da house");
 		this.jobQueue = new ConcurrentLinkedQueue<Job>();
 
 		this.cluster = cluster;
 		this.socketURL = cluster.getName();
 		
 		this.gridschedulers = new ArrayList<String>();
+		this.rr = new ArrayList<String>();
 		
 		this.gridschedulers.add(gridscheduler);
 		
@@ -91,6 +101,26 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 		this.timer   = true;
 		this.timers  = new HashMap<Integer, Boolean>();
 		
+		logger = Logger.getLogger("MyLog");
+		
+		try {  
+            
+            // This block configure the logger with handler and formatter  
+            fh = new FileHandler(socketURL + "LogFile.log");  
+            logger.addHandler(fh);  
+            //logger.setLevel(Level.ALL);  
+            SimpleFormatter formatter = new SimpleFormatter();  
+            fh.setFormatter(formatter);  
+              
+            // the following statement is used to log any messages  
+            logger.info("Opening log for " + socketURL);  
+              
+        } catch (SecurityException e) {  
+            e.printStackTrace();  
+        } catch (IOException e) {  
+            e.printStackTrace();  
+        }  
+		
 		/*LocalSocket lSocket = new LocalSocket();
 		socket = new SynchronizedSocket(lSocket);
 		socket.register(socketURL);
@@ -100,9 +130,15 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 		// Bind the node to the RMI registry.
 		try {
 			java.rmi.Naming.bind(socketURL, this);
-		} catch (MalformedURLException | AlreadyBoundException e) {
+		} catch (MalformedURLException e) {
+			e.printStackTrace();
+		} catch (AlreadyBoundException e) {
 			e.printStackTrace();
 		}
+		
+		/*catch (MalformedURLException | AlreadyBoundException e) {
+			e.printStackTrace();
+		}*/
 				
 		final String name = socketURL;
 				
@@ -110,7 +146,7 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			@Override
 			public void run() {
-				System.out.println("Shutting down " + name + ".");
+				logger.info("Shutting down " + name + ".");
 				try {
 					java.rmi.Naming.unbind(name);
 				} catch (Exception e) {
@@ -128,9 +164,17 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 		ControlMessage message = new ControlMessage(ControlMessageType.RequestGSes);
 		message.setUrl(socketURL);
 		message.setLoad(random_gs);
-		System.out.println("this is it: " + random_gs);
+		logger.info("this is it: " + random_gs);
 		sendMessage(message, random_gs);
 		//socket.sendMessage(message, "localsocket://" + random_gs);
+	}
+	
+	public void roundRobin()
+	{
+		for (int i = 0; i < gridschedulers.size(); i++)
+		{
+			rr.add(gridschedulers.get(i));
+		}
 	}
 	
 	public void sendMessage(Message m, String url)
@@ -138,11 +182,17 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 		try {
 			IMessageReceivedHandler stub = (IMessageReceivedHandler) java.rmi.Naming.lookup(url);
 			stub.onMessageReceived(m);
-		} catch (MalformedURLException | RemoteException
-				| NotBoundException e) {
-			System.out.println(this.socketURL + ": " + e.getClass() + "|" + url);
-			//e.printStackTrace();
+		} catch (MalformedURLException e) {
+			e.printStackTrace();
+		} catch (RemoteException e) {
+			e.printStackTrace();
+		} catch (NotBoundException e) {
+			e.printStackTrace();
 		}
+		
+		/*catch (MalformedURLException | RemoteException | NotBoundException e) {
+			e.printStackTrace();
+		}*/
 	}
 
 	/**
@@ -172,11 +222,17 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 			int r = generator.nextInt(gridschedulers.size());
 			final String chosen = gridschedulers.get(r);
 			
+			/*if (rr.size() == 0)
+				roundRobin();
+			int r = generator.nextInt(rr.size());
+			final String chosen = rr.remove(r);*/
 			//socket.sendMessage(controlMessage, "localsocket://" + chosen);
 			
 			final Job fjob = job;
 			timers.put(new Integer((int) fjob.getId()), true);
 			sendMessage(controlMessage, chosen);
+			//socket.sendMessage(controlMessage, "localsocket://" + chosen);
+			
 			startTimer(chosen, fjob);
 			// Start a client.
 			/*Thread t = new Thread() {
@@ -209,14 +265,17 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 
 		    Future<?> f = service.submit(r);
 		    
-		    f.get(2, TimeUnit.SECONDS);     // attempt the task for 30 sec
+		    f.get(1500, TimeUnit.MILLISECONDS);     // attempt the task for 30 sec
 		}
 		catch (final InterruptedException e) {
 		    // The thread was interrupted during sleep, wait or join
 		}
 		catch (final TimeoutException e) {
 			System.out.println("============ TIMEOUT!!! in " + this.socketURL + "========= for " + gs);
+			timers.remove(jobId);
+			logger.info("Before" + gridschedulers.toString());
 			gridschedulers.remove(gs);
+			logger.info(gridschedulers.toString() + "");
 		    retry(gs, j);
 		}
 		catch (final ExecutionException e) {
@@ -235,7 +294,7 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 	
 	public void retry(String gs, Job job)
 	{
-		System.out.println("Retrying for " + gs);
+		logger.info("Retrying for " + gs);
 		ControlMessage controlMessage = new ControlMessage(ControlMessageType.Retry);
 		controlMessage.setJob(job);
 		controlMessage.setUrl(cluster.getName());
@@ -274,7 +333,7 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 		// free nodes
 		Node freeNode;
 		Job waitingJob;
-		//System.out.println(jobQueue.size());
+		//logger.info(jobQueue.size());
 		while ( ((waitingJob = getWaitingJob()) != null) && ((freeNode = cluster.getFreeNode()) != null) ) {
 			freeNode.startJob(waitingJob);
 		}
@@ -320,6 +379,15 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 		//socket.sendMessage(message, "localsocket://" + gridSchedulerURL);
 
 	}
+	
+	public void exit() {
+		int r = generator.nextInt(gridschedulers.size());
+		final String chosen = gridschedulers.get(r);
+		ControlMessage dMessage = new ControlMessage(ControlMessageType.RMLeave);
+		dMessage.setUrl(cluster.getName());
+		sendMessage(dMessage, chosen);
+		//socket.sendMessage(dMessage, "localsocket://" + chosen);
+	}
 
 	/**
 	 * Message received handler
@@ -354,6 +422,7 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 				gridschedulers.remove(controlMessage.getSLoad());
 			
 			System.out.println(this.socketURL + ": Scheduler down acknowledged.");
+			logger.info(gridschedulers.toString() + "");
 		}
 
 		// resource manager wants to offload a job to us 
@@ -370,7 +439,7 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 		if (controlMessage.getType() == ControlMessageType.ReplyGS)
 		{
 			String gs = controlMessage.getUrl();
-			System.out.println("RM of: " + socketURL + "registered with" + gs);
+			logger.info("RM of: " + socketURL + "registered with" + gs);
 			gridschedulers.add(gs);
 		}
 		
@@ -414,6 +483,7 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 		
 		if (controlMessage.getType() == ControlMessageType.ShutDown)
 		{
+			exit();
 			try {
 				java.rmi.Naming.unbind(this.socketURL);
 			} catch (Exception e) {

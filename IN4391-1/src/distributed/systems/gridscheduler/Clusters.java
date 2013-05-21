@@ -18,7 +18,17 @@ public class Clusters {
 		Random generator = new Random(seed);
 		int r;
 		Scanner scan = new Scanner(System.in);
-		ArrayList<Process> pclusters = new ArrayList<Process>();
+		final ArrayList<Process> pclusters = new ArrayList<Process>();
+		
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+			@Override
+			public void run() {
+				System.out.println("Shutting down Clusters process.");
+				for (Process p : pclusters)
+					p.destroy();
+			}
+		});
+		
 		ProcessBuilder pb;
 		// Create Cluster processes
 		for (int i = 0; i < 5; i++) {
@@ -46,15 +56,20 @@ public class Clusters {
 							System.out.println(line);
 						}
 					} catch (IOException e) {}
+					System.out.println("I think we're done here.");
 				}
 			};
 			t.start();
 		}
 		
-		scan.nextInt();
-		for (Process p : pclusters)
-			p.destroy();
-
+		Process p = pclusters.get(0);
+		try {
+			p.waitFor();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		
+		System.out.println("End of clusters process.");
 	}
 
 }

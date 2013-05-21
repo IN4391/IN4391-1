@@ -14,7 +14,7 @@ public enum ControlMessageType {
 	RequestGSes,
 	ReplyLoad,
 	Retry,
-
+	RMLeave,
 	// from GS to RM
 	RequestLoad,
 	
@@ -25,7 +25,7 @@ public enum ControlMessageType {
 	GSDown,
 	
 	Roger,
-
+	
 	// both ways
 	AddJob,
 	SpawnJob,
@@ -38,6 +38,8 @@ public enum ControlMessageType {
 	
 	//from GS to GS
 	BulkJob,
+	
+	RMDown,
 	
 	NeighborRequest,
 	
