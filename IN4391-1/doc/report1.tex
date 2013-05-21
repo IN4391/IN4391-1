@@ -43,7 +43,7 @@ We designed a fault tolerance mechanism, that utlizes a mesh structure in the no
 
 \subsection{Failure detection}
 A gridscheduler node failure can be detected either by another gridscheduler or by a resource manager of a cluster.
-When a resource manager offloads a job to a gridscheduler, it waits for an acknowledgment (asynchronously) for 2 seconds, and if it didn't receive a reply, it removes the gridscheduler from its list of gridschedulers, and retries with another one including in that message the failure of a gridscheduler. The gridscheduler that gets contacted with a Retry message, first informs all clusters that the gridscheduler, or gridschedulers in case it is a double retry, is down. Then it informs the gridschedulers, who immediately go into maintenance mode. When a gridscheduler is in maintenance mode, jobs keep getting received by the clusters, but it does not offload jobs to clusters until the control structure is rebuilt.
+When a resource manager offloads a job to a gridscheduler, it waits for an acknowledgment (asynchronously) for 2 seconds, and if it didn't receive a reply, it removes the gridscheduler from its list of gridschedulers, and retries with another one including in that message the failure of a gridscheduler. The gridscheduler that gets contacted with a Retry message, first informs all clusters that the gridscheduler, or gridschedulers in case it is a double retry, is down. Then it informs the gridschedulers, who immediately go into maintenance mode. When a gridscheduler is in maintenance mode, jobs keep getting received by the clusters, but it does not offload jobs to clusters until the control structure is rebuilt. The two nodes who lost a neighbour both send a message to the other neighbour through the broken ring (assumed there are no other failures). They check whose id is bigger, and that node send a message through the ring annoucing the end of maintenance.
 
 Implemented:
 \begin{itemize}
@@ -75,6 +75,55 @@ Unfortunately the nodes in the system are not completely resilient against fault
 
 \subsection{Bonus Features}
 Besides the scalability and the fault tolerance, we did some additional work to improve this system. Because we think the solutions found in this study may benefit other people as well that face similar problems in fault tolerance or scalability. Therefore the complete source code for the Distributed Grid Scheduler is open source and can be found on GitHub [https://github.com/IN4391/IN4391-1].
+
+\begin{table*}
+\begin{tabular}{ |l|l| }
+  \hline
+  Initialize RMI & Register with rmiregistry \\
+  \hline
+  Initialize gridschedulers: & send(RequestGSes, random\_gs) \\
+  \hline
+  OnMessageReceived: & AddJob $\rightarrow$ jobQueue.add(job) \\
+  & RequestLoad $\rightarrow$ send(ReplyLoad, requester) \\
+  & ReplyGS $\rightarrow$ gridschedulers.add(gs) \\
+  & SpawnJob (jobQueue full) $\rightarrow$ send(AddJob, random\_gs); startTimer() \\
+  & SpawnJob (jobQueue not full) $\rightarrow$ jobQueue.add(job) \\
+  & Roger $\rightarrow$ stopTimer() \\
+  & GSDown $\rightarrow$  gridschedulers.remove(gs) \\
+  & JoiningGS $\rightarrow$ send(ResourceManagerJoin, gs) \\
+  \hline
+\end{tabular}
+\caption{ResourceManager intialization and message received function.}
+\end{table*}
+
+\begin{table*}
+\begin{tabular}{ |l|l| }
+  \hline
+  Initialize RMI & Register with rmiregistry \\
+  \hline
+  run: & for each ResourceManager rm\\
+  & send(RequestLoad, rm) \\
+  & for each Job j\\
+  & send(AddJob, j)\\
+  & leastLoadedRM++\\
+  & informOthers()\\
+  \hline
+  OnMessageReceived: & AddJob $\rightarrow$ jobQueue.add(job); send(Roger, sender) \\
+  & RequestGSes $\rightarrow$ rmLoad.put(url); send(ReplyGS, sender); send(ForwardRM, downstream) \\
+  & ForwardRM $\rightarrow$ rmLoad.put(url); send(ReplyGS, sender); send(ForwardRM, downstream) \\
+  & ReplyLoad $\rightarrow$ rmLoad.put(url) \\
+  & UpdateView $\rightarrow$ rmLoad.put(url); send(UpdateView, downstream) \\
+  & Retry $\rightarrow$ send(Roger, sender); nodeLeft(gs) \\
+  & CrasedGS $\rightarrow$  send(NeighborRequest) $\|$ send(CrashedGS) \\
+  & NeighborRequest $\rightarrow$ send(NeighborRequest) $\|$ down or upstream = gs  \\
+  & MaintenanceDone $\rightarrow$ maintenance = false; send(MaintenanceDone, downstream)\\
+  \hline
+\end{tabular}
+\caption{GridScheduler polling loop and message received function.}
+\end{table*}
+
+\section{Testing}
+Simple tests were performed to test the separate mechanisms for fault-tolerance, for example by letting a gridscheduler shut down after some time. What is interesting to measure when this event takes place, is how long it takes for the system to reconstruct its ring structure. Unfortunately even with a large number of gridschedulers this is a negligible amount of time. Since the asynchronous messaging between the clusters and gridschedulers remains intact even when in maintenance mode, a slight peak in the job queues is noticeable.
 
 \section{Experimental Setup}
 To see how the improved version of the gridscheduler performed, we conducted a few experiments on the DAS supercomputer located at the TU Delft [note]. Jobs where simulated on different clusters having a variable time between 4 and 12 seconds. The jobs were send to the resourcemanagers at different rates to see how they performed. We used different amounts of Schedulers to see how different they perform and to estimate how well this solution scales.
