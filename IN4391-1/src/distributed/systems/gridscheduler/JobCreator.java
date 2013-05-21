@@ -29,6 +29,7 @@ public class JobCreator extends UnicastRemoteObject implements IMessageReceivedH
 	{
 		this.nrClusters = nrClusters;
 		
+		
 		/*LocalSocket lSocket = new LocalSocket();
 		socket = new SynchronizedSocket(lSocket);
 		socket.register("JobCreator");
@@ -45,6 +46,7 @@ public class JobCreator extends UnicastRemoteObject implements IMessageReceivedH
 		}
 				
 		final String name = "JobCreator";
+		
 				
 		// Let the node unregister from RMI registry on shut down.
 		Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -176,10 +178,10 @@ public class JobCreator extends UnicastRemoteObject implements IMessageReceivedH
 		
 		final int nrClusters = Integer.parseInt(args[0]);
 		
-		// Create and install a security manager
-		/*if (System.getSecurityManager() == null) {
+		System.setProperty("java.security.policy", "file:./my.policy");
+		if (System.getSecurityManager() == null) {
 			System.setSecurityManager(new RMISecurityManager());
-		}*/
+		}
 		
 		JobCreator jc = new JobCreator(nrClusters);
 		

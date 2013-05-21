@@ -133,7 +133,13 @@ public abstract class Socket {
 	{
 		if (receivedHandlers.size() > 0)
 			for(IMessageReceivedHandler imrh: receivedHandlers)
-				if (imrh != caller)
-					imrh.onMessageReceived(message);		
+				if (imrh != caller){
+					try{
+						imrh.onMessageReceived(message);		
+					}
+					catch(Exception e){
+						
+					}
+				}
 	}	
 }

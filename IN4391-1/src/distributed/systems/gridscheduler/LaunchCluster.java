@@ -25,9 +25,10 @@ public class LaunchCluster {
 		System.out.println("We launching something here");
 		
 		// Create and install a security manager
-		/*if (System.getSecurityManager() == null) {
-		System.setSecurityManager(new RMISecurityManager());
-		}*/
+		System.setProperty("java.security.policy", "file:./my.policy");
+		if (System.getSecurityManager() == null) {
+			System.setSecurityManager(new RMISecurityManager());
+		}
 		
 		try {
 			Cluster c = new Cluster("cluster" + cid, "scheduler" + grid_scheduler, nrNodes);

@@ -23,9 +23,10 @@ public class LaunchGridScheduler {
 		final int upstream_gid 	 = Integer.parseInt(args[2]);
 		
 		// Create and install a security manager
-		/*if (System.getSecurityManager() == null) {
-		System.setSecurityManager(new RMISecurityManager());
-		}*/
+		System.setProperty("java.security.policy", "file:./my.policy");
+		if (System.getSecurityManager() == null) {
+			System.setSecurityManager(new RMISecurityManager());
+		}
 		
 		try {
 			GridScheduler gs = new GridScheduler("scheduler" + gid, "scheduler" + downstream_gid, "scheduler" + upstream_gid);
