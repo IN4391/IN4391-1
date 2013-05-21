@@ -29,35 +29,35 @@ A distributed solution consists of having multiple gridschedulers that can be co
 
 \begin{figure}
 	\includegraphics[scale=0.7]{distributedGS.jpg}
-	\caption{Distributed soltion with multiple Gridschedulers.}
+	\caption{Distributed solution with multiple Gridschedulers.}
 \end{figure}
 
 \subsection{Initialization}
-Each Resource Manager is initalized with one random Gridscheduler that is active at the moment the Resource Manager comes online. It then contacts this Gridscheduler to inform it about its existence. The Gridscheduler then sends back an acknowledgement and forwards this info to the other Gridschedulers who upon receiving also send an acknowledgement to the Resource Manager.
+Each Resource Manager is initialized with one random Gridscheduler that is active at the moment the Resource Manager comes online. It then contacts this Gridscheduler to inform it about its existence. The Gridscheduler then sends back an acknowledgment and forwards this info to the other Gridschedulers who upon receiving also send an acknowledgment to the Resource Manager.
 
 \subsection{Replication and consistency}
 We implemented a very strict, and simple, consistency mechanism regarding the load of the clusters. Whenever a gridscheduler offloads a job to a cluster, it informs all gridschedulers about this event. It is a very simple mechanism at the cost of a lot of message overhead. We tried to relieve this drawback a little bit, by organizing the nodes in a (bidirectional) ring structure, for a simple communication mechanism, that also divides the communication overhead over all nodes. One might argue that this still can become a very large ring with a large number of nodes in the system. We also designed an optimization for that: bisecting the ring structure in almost equal halves by sending a multicast message in both directions, until they meet somewhere in the middle (influenced by message delay).
 
 \subsection{Fault tolerance}
-We designed a fault tolerance mechanism, that utlizes a mesh structure in the node topology to reconstruct the ring in case of node failures by use of gossiping. This is achieved by maintaining a list of known peers. We however only implemented a solution for single node failures (because of time distress caused by exams), which assumes the ring has two broken links caused by the node that failed, and tries to fix that by sending a message in the opposite direction.
+We designed a fault tolerance mechanism, that utilizes a mesh structure in the node topology to reconstruct the ring in case of node failures by use of gossiping. This is achieved by maintaining a list of known peers. We however only implemented a solution for single node failures (because of time distress caused by exams), which assumes the ring has two broken links caused by the node that failed, and tries to fix that by sending a message in the opposite direction.
 
 \subsection{Failure detection}
 A gridscheduler node failure can be detected either by another gridscheduler or by a resource manager of a cluster.
-When a resource manager offloads a job to a gridscheduler, it waits for an acknowledgment (asynchronously) for 2 seconds, and if it didn't receive a reply, it removes the gridscheduler from its list of gridschedulers, and retries with another one including in that message the failure of a gridscheduler. The gridscheduler that gets contacted with a Retry message, first informs all clusters that the gridscheduler, or gridschedulers in case it is a double retry, is down. Then it informs the gridschedulers, who immediately go into maintenance mode. When a gridscheduler is in maintenance mode, jobs keep getting received by the clusters, but it does not offload jobs to clusters until the control structure is rebuilt. The two nodes who lost a neighbour both send a message to the other neighbour through the broken ring (assumed there are no other failures). They check whose id is bigger, and that node send a message through the ring annoucing the end of maintenance.
+When a resource manager offloads a job to a gridscheduler, it waits for an acknowledgment (asynchronously) for 2 seconds, and if it didn't receive a reply, it removes the gridscheduler from its list of gridschedulers, and retries with another one including in that message the failure of a gridscheduler. The gridscheduler that gets contacted with a Retry message, first informs all clusters that the gridscheduler, or gridschedulers in case it is a double retry, is down. Then it informs the gridschedulers, who immediately go into maintenance mode. When a gridscheduler is in maintenance mode, jobs keep getting received by the clusters, but it does not offload jobs to clusters until the control structure is rebuilt. The two nodes who lost a neighbor both send a message to the other neighbor through the broken ring (assumed there are no other failures). They check whose id is bigger, and that node send a message through the ring announcing the end of maintenance.
 
 Implemented:
 \begin{itemize}
 	\item (Bidirectional) Ring structure for messaging (communication load divided over all nodes).
 	\item Ring reconstruction for single node failure.
-	\item Acknowledgements for sending jobs from Cluster to GridScheduler
+	\item Acknowledgments for sending jobs from Cluster to GridScheduler
 	\item Loadbalancing clusters requires consistent view of clusters free slots by gridschedulers: strict consistency, every change in a cluster by a gridscheduler, is sent through the ring to inform all other gridschedulers about it
 \end{itemize}
 
 Designbed but not implemented:
 \begin{itemize}
-	\item Mesh structure utitilized for ring reconstruction at node failure, achieved by maintaining list of known peers and gossiping
+	\item Mesh structure utilized for ring reconstruction at node failure, achieved by maintaining list of known peers and gossiping
 	\item With n nodes, ring of size n, and a k-connected graph (mesh) for ring reconstruction, maintained by a list of k known peers
-	\item Acknowledgements between gridscheduler communication
+	\item Acknowledgments between gridscheduler communication
 	\item Load balancing jobqueue gridschedulers
 	\item Optimizing ring traffic, by bisecting of the ring: send message in both ways, until they meet around half way the ring
 \end{itemize}
@@ -67,8 +67,7 @@ The RecourceManager of each cluster offloads a job to one gridscheduler from its
 
 
 \subsection{Scalability}
-Due to the fact that a single GridScheduler can only handle a few clusters, the basic application wasn't very scalable. To be able to manage many clusters, multiple GridSchedulers are needed. We implemented a  GridSchedulerNode that could be deployed on different machines and when working together is able to manage many clusters. Each GridSchedulerNode has a Queue that consists of Jobs that have not finished yet. Each gridscheduler is responsible for the execution of the jobs that are in its Queue. To be able to scale well, all the nodes need to have about the same amount of jobs in its Queue. It is therefore important that all the nodes know what the load is in each node. This is done by passing controlmessages around which contain the load of the nodes. Gridschedulers can offload jobs to other gridschedulers when it passes a certain threshold when it currently has too many jobs waiting.
-Using this technique we make sure that all the nodes have more or less the same load and this should scale the application in a correct way.
+Due to the fact that a single GridScheduler can only handle a few clusters, the basic application wasn't very scalable. To be able to manage many clusters, multiple GridSchedulers are needed. We implemented a  GridSchedulerNode that could be deployed on different machines and when working together is able to manage many clusters. Each GridSchedulerNode has a Queue that consists of Jobs that have not finished yet. Each gridscheduler is responsible for the execution of the jobs that are in its Queue. To be able to scale well, all the nodes need to have about the same amount of jobs in its Queue. It is therefore important that all the nodes know what the load is in each node. This is done by passing controlmessages around which contain the load of the nodes. Gridschedulers can offload jobs to other gridschedulers when it passes a certain threshold when it currently has too many jobs waiting. Using this technique we make sure that all the nodes have more or less the same load and this should scale the application in a correct way.
 
 \subsection{Fault Tolerance}
 Unfortunately the nodes in the system are not completely resilient against faults, or failures. A node can suddenly crash and loose all of the contents of its Queue. Because you want all jobs sent to the system will be returned when they are finished the jobs need to be backed up somewhere in case a node breaks down. The solution here is to backup all jobs on another node and distribute this backup to all other nodes when a node has failed. The new problem now is, how to detect when a node has crashed? Our solution is to give the responsibility of detecting whether or not a node is crashed to the original upstream and downstream of the node. If both these nodes agree that the node between them has crashed, they will broadcast the fact that this node is no longer available and make a new connection between them so that the bidirectional ring is connected again.
@@ -136,8 +135,11 @@ To see how the improved version of the gridscheduler performed, we conducted a f
 After extensive testing we came to the following results...
 
 \section{Discussion and Future work}
-
+The question is how well this will work when the nodes are in different parts of the world. In this experiment we did the test on only one single cluster where the different nodes are close to each other and have a low latency between them. Also due to time constraints the jobs where relatively small, both in size and in time before completion. In a more realistic world the jobs are considerable longer and take a longer time to transit. More realistic testing should be done in order to test how well this works when the schedulers are truly distributed. This wasn't our main goal in this setup in which we where only showing this is a viable option.
+During the building of this application we faced different challenges. First thing was that we had to think of how different nodes should communicate with each other, thus designing a new protocol for communication with the nodes. Another challenge was the need for testing this on the DAS-cluster. The DAS-cluster has a particular way of working with nodes that we have to work with. It was quite a challenge to find out how to work with the DAS-cluster as there wasn't any lot of documentation available on how to work with RMI on the DAS-cluster.
 
 \section{Conclusion}
+We showed that it is possible to create a distributed scheduler, that is both scalable and fault tolerant. This can be done when the nodes communicate with each other using different message types. The passing around of messages ensures that different nodes know what to do. The specifications of these messages are very important so that all nodes understand each other.
+%As a result we where able to manage 100.000 nodes at once using this distributed application.
 
 \end{document}
