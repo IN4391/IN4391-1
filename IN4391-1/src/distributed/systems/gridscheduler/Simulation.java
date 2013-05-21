@@ -53,7 +53,7 @@ public class Simulation extends UnicastRemoteObject implements Runnable {
 		// Bind the node to the RMI registry.
 				try {
 					java.rmi.Naming.bind("JobCreator", this);
-				} catch (MalformedURLException | AlreadyBoundException e) {
+				} catch (Exception  e) {
 					e.printStackTrace();
 				}
 						
@@ -201,7 +201,7 @@ public class Simulation extends UnicastRemoteObject implements Runnable {
 		try {
 			IMessageReceivedHandler stub = (IMessageReceivedHandler) java.rmi.Naming.lookup(url);
 			stub.onMessageReceived(m);
-		} catch (MalformedURLException | RemoteException | NotBoundException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}

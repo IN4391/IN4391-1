@@ -204,7 +204,7 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 		try {
 			IMessageReceivedHandler stub = (IMessageReceivedHandler) java.rmi.Naming.lookup(url);
 			stub.onMessageReceived(m);
-		} catch (MalformedURLException | NotBoundException | NullPointerException | RemoteException e) {
+		} catch (Exception e) {
 			logger.info(this.url + ": " + e.getClass() + "|" + url);
 			//tmp++;
 			if (!maintenance)
