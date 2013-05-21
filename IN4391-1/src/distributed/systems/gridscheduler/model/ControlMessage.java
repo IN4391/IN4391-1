@@ -1,6 +1,7 @@
 package distributed.systems.gridscheduler.model;
 
 import java.util.ArrayList;
+
 import distributed.systems.core.Message;
 
 /**

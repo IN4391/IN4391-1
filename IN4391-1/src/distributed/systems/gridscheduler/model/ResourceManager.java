@@ -2,12 +2,11 @@ package distributed.systems.gridscheduler.model;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.rmi.AlreadyBoundException;
 import java.rmi.NotBoundException;
+import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Queue;
@@ -26,7 +25,6 @@ import java.util.logging.SimpleFormatter;
 import distributed.systems.core.IMessageReceivedHandler;
 import distributed.systems.core.Message;
 import distributed.systems.core.SynchronizedSocket;
-import distributed.systems.example.LocalSocket;
 
 /**
  * This class represents a resource manager in the VGS. It is a component of a cluster, 
@@ -130,16 +128,24 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 
 		socket.addMessageReceivedHandler(this);*/
 		
+		System.setProperty("java.security.policy", "file:./my.policy");
+		if (System.getSecurityManager() == null) {
+			System.setSecurityManager(new RMISecurityManager());
+		}
+		
 		// Bind the node to the RMI registry.
 		try {
-			System.out.println("Binding to: "+registry);
-			System.out.println("Register: " + Arrays.toString(java.rmi.Naming.list(registry)));
-			java.rmi.Naming.bind("rmi://"+registry+":1099/"+socketURL, this);
+			String url = "//"+registry+":1099/"+socketURL;
+			//System.out.println("Binding to: "+registry);
+			//System.out.println("Register: " + Arrays.toString(java.rmi.Naming.list(registry)));
+			System.out.println("trying to bind to: "+url);
+			java.rmi.Naming.rebind(url, this);
+			System.out.println("binded to: "+url);
 		} catch (MalformedURLException e) {
 			e.printStackTrace();
-		} catch (AlreadyBoundException e) {
-			e.printStackTrace();
-		}
+		} //catch (AlreadyBoundException e) {
+			//e.printStackTrace();
+		//}
 		
 		/*catch (MalformedURLException | AlreadyBoundException e) {
 			e.printStackTrace();

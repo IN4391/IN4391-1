@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.rmi.RMISecurityManager;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Scanner;
@@ -34,10 +33,7 @@ public class Clusters {
 					p.destroy();
 			}
 		});
-		System.setProperty("java.security.policy", "my.policy");
-		//if (System.getSecurityManager() == null) {
-			//System.setSecurityManager(new RMISecurityManager());
-		//}
+		
 		
 		ProcessBuilder pb;
 		// Create Cluster processes

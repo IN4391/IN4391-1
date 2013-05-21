@@ -4,13 +4,9 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Panel;
 import java.awt.ScrollPane;
-import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 
 import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.JComponent;
-import javax.swing.JTabbedPane;
 
 import distributed.systems.gridscheduler.model.GridScheduler;
 

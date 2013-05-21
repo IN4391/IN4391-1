@@ -1,8 +1,5 @@
 package distributed.systems.gridscheduler;
 
-import java.net.MalformedURLException;
-import java.rmi.AlreadyBoundException;
-import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
@@ -76,7 +73,7 @@ public class Simulation extends UnicastRemoteObject implements Runnable {
 		
 		ArrayList<GridScheduler> schedulers = new ArrayList<GridScheduler>();
 		for (int i = 0; i < 5; i++)
-			schedulers.add(new GridScheduler("scheduler" + i, "scheduler" + ((i + 1) % 5), "scheduler" + ((i - 1 + 5) % 5)));
+			schedulers.add(new GridScheduler("scheduler" + i, "scheduler" + ((i + 1) % 5), "scheduler" + ((i - 1 + 5) % 5), "localhost"));
 		
 		gs = schedulers.get(0);
 		
@@ -112,7 +109,7 @@ public class Simulation extends UnicastRemoteObject implements Runnable {
 		clusters = new Cluster[nrClusters];
 		for (int i = 0; i < nrClusters; i++) {
 			int r = generator.nextInt(gridschedulers.size());
-			clusters[i] = new Cluster("cluster" + i, gridschedulers.get(r), nrNodes); 
+			clusters[i] = new Cluster("cluster" + i, gridschedulers.get(r), nrNodes, "localhost"); 
 			
 			// Now create a cluster status panel for each cluster inside this gridscheduler
 			ClusterStatusPanel clusterReporter = new ClusterStatusPanel(clusters[i]);

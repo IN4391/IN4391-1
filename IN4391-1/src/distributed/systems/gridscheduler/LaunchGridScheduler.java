@@ -1,8 +1,6 @@
 package distributed.systems.gridscheduler;
 
-import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
-import java.util.ArrayList;
 
 import distributed.systems.gridscheduler.model.GridScheduler;
 
@@ -21,13 +19,6 @@ public class LaunchGridScheduler {
 		final int gid 			 = Integer.parseInt(args[0]);
 		final int downstream_gid = Integer.parseInt(args[1]);
 		final int upstream_gid 	 = Integer.parseInt(args[2]);
-		
-		
-		// Create and install a security manager
-		System.setProperty("java.security.policy", "file:./my.policy");
-		//if (System.getSecurityManager() == null) {
-			//System.setSecurityManager(new RMISecurityManager());
-		//}
 		
 		try {
 			//System.out.println("Launch1");

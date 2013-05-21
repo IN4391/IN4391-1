@@ -6,13 +6,11 @@ import java.rmi.NotBoundException;
 import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.Arrays;
 import java.util.Scanner;
 
 import distributed.systems.core.IMessageReceivedHandler;
 import distributed.systems.core.Message;
 import distributed.systems.core.SynchronizedSocket;
-import distributed.systems.example.LocalSocket;
 import distributed.systems.gridscheduler.model.ControlMessage;
 import distributed.systems.gridscheduler.model.ControlMessageType;
 import distributed.systems.gridscheduler.model.Job;
@@ -20,7 +18,7 @@ import distributed.systems.gridscheduler.model.Job;
 public class JobCreator extends UnicastRemoteObject implements IMessageReceivedHandler, Runnable{
 	
 	private int nrClusters;
-	static private SynchronizedSocket socket;
+	//static private SynchronizedSocket socket;
 	
 	static String registry;
 	
@@ -31,7 +29,7 @@ public class JobCreator extends UnicastRemoteObject implements IMessageReceivedH
 	public JobCreator(int nrClusters, String registry) throws RemoteException 
 	{
 		this.nrClusters = nrClusters;
-		this.registry = registry;
+		JobCreator.registry = registry;
 		
 		
 		/*LocalSocket lSocket = new LocalSocket();
@@ -40,9 +38,17 @@ public class JobCreator extends UnicastRemoteObject implements IMessageReceivedH
 
 		socket.addMessageReceivedHandler(this);*/
 		
+		System.setProperty("java.security.policy", "file:./my.policy");
+		if (System.getSecurityManager() == null) {
+			System.setSecurityManager(new RMISecurityManager());
+		}
+		
 		// Bind the node to the RMI registry.
 		try {
-			java.rmi.Naming.bind("rmi://"+registry+":1099/JobCreator", this);
+			String url = "//"+registry+":1099/JobCreator";
+			System.out.println("trying to bind to: "+url);
+			java.rmi.Naming.bind(url, this);
+			System.out.println("binded to: "+url);
 		} catch (MalformedURLException e) {
 			e.printStackTrace();
 		} catch (AlreadyBoundException e) {

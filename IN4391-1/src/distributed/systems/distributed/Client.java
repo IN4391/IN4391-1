@@ -1,5 +1,6 @@
 package distributed.systems.distributed;
 
+import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 
 import distributed.systems.core.IMessageReceivedHandler;

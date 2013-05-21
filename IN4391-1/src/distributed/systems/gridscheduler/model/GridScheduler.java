@@ -2,30 +2,20 @@ package distributed.systems.gridscheduler.model;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.rmi.AlreadyBoundException;
 import java.rmi.NotBoundException;
+import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
 import distributed.systems.core.IMessageReceivedHandler;
 import distributed.systems.core.Message;
-import distributed.systems.core.Socket;
-import distributed.systems.core.SynchronizedSocket;
-import distributed.systems.example.LocalSocket;
 
 /**
  * 
@@ -35,6 +25,7 @@ import distributed.systems.example.LocalSocket;
  * @author Niels Brouwers
  *
  */
+@SuppressWarnings("serial")
 public class GridScheduler extends UnicastRemoteObject implements IMessageReceivedHandler, Runnable {
 	
 	// job queue
@@ -44,7 +35,7 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 	private final String url;
 
 	// communications socket
-	private SynchronizedSocket socket;
+	//private SynchronizedSocket socket;
 	
 	// a hashmap linking each resource manager to an estimated load
 	private ConcurrentHashMap<String, Integer> resourceManagerLoad;
@@ -55,13 +46,13 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 	private String upstream_neighbour;
 	private String downstream_neighbour;
 	
-	private long jobId;
+	//private long jobId;
 	
 	// random number generator
-	private Random generator; 
+	//private Random generator; 
 	
 	// timer
-	private boolean timer;
+	//private boolean timer;
 	private boolean maintenance;
 	
 	// logger
@@ -101,17 +92,17 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 		this.resourceManagerLoad = new ConcurrentHashMap<String, Integer>();
 		this.jobQueue = new ConcurrentLinkedQueue<Job>();
 		this.gridschedulers = new ArrayList<String>();
-		this.jobId = 0;
+		//this.jobId = 0;
 		//logger.info("Like wtf is going on?");
 		// create a messaging socket
 		/*LocalSocket lSocket = new LocalSocket();
 		socket = new SynchronizedSocket(lSocket);
 		socket.addMessageReceivedHandler(this);*/
 		
-		long seed = System.currentTimeMillis();
-		generator = new Random(seed);
+		//long seed = System.currentTimeMillis();
+		//generator = new Random(seed);
 		
-		timer = false;
+		//timer = false;
 		maintenance = false;
 		// register the socket under the name of the gridscheduler.
 		// In this way, messages can be sent between components by name.
@@ -139,11 +130,19 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
             e.printStackTrace();  
         }  
 		
+		System.setProperty("java.security.policy", "file:./my.policy");
+		if (System.getSecurityManager() == null) {
+			System.setSecurityManager(new RMISecurityManager());
+		}
+		
 		// Bind the node to the RMI registry.
 		try {
-			System.out.println("Register: " + Arrays.toString(java.rmi.Naming.list(registry)));
-			java.rmi.Naming.rebind("rmi://"+registry+":1099/"+url, this);
-			System.out.println("RMI: " + Arrays.toString(java.rmi.Naming.list("rmi://"+registry+":1099/"+url)));
+			String url2 = "//"+registry+":1099/"+url;
+			//System.out.println("Register: " + Arrays.toString(java.rmi.Naming.list(registry)));
+			System.out.println("trying to bind to: "+url2);
+			java.rmi.Naming.rebind(url2, this);
+			//System.out.println("RMI: " + Arrays.toString(java.rmi.Naming.list("rmi://"+registry+":1099/"+url)));
+			System.out.println("binded to: "+url2);
 		} catch (MalformedURLException e) {
 			e.printStackTrace();
 		}  //catch (AlreadyBoundException e) {
