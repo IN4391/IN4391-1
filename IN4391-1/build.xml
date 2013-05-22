@@ -1,0 +1,62 @@
+<project name="DAS" basedir="." default="jar">
+
+	<path id="classpath">
+		<fileset dir="src" includes="**/*.jar" />
+	</path>
+
+	<target name="clean">
+		<delete dir="build" />
+	</target>
+
+	<target name="compile" depends="clean">
+		<mkdir dir="build/classes" />
+		<javac srcdir="src" destdir="build/classes" classpathref="classpath" />
+	</target>
+
+	<target name="jar" depends="compile">
+		<mkdir dir="build/jar" />
+		<jar destfile="build/jar/LaunchGridScheduler.jar" basedir="build/classes">
+			<manifest>
+				<attribute name="Main-Class" value="distributed.systems.gridscheduler.LaunchGridScheduler" />
+			</manifest>
+		</jar>
+
+		<jar destfile="build/jar/LaunchCluster.jar" basedir="build/classes">
+			<manifest>
+				<attribute name="Main-Class" value="distributed.systems.gridscheduler.LaunchCluster" />
+			</manifest>
+		</jar>
+
+		<jar destfile="build/jar/Clusters.jar" basedir="build/classes">
+			<manifest>
+				<attribute name="Main-Class" value="distributed.systems.gridscheduler.Clusters" />
+			</manifest>
+		</jar>
+
+		<jar destfile="build/jar/GridSchedulers.jar" basedir="build/classes">
+			<manifest>
+				<attribute name="Main-Class" value="distributed.systems.gridscheduler.Clusters" />
+			</manifest>
+		</jar>
+
+		<jar destfile="build/jar/JobCreator.jar" basedir="build/classes">
+			<manifest>
+				<attribute name="Main-Class" value="distributed.systems.gridscheduler.JobCreator" />
+			</manifest>
+		</jar>
+
+	</target>
+
+	<target name="run" depends="jar">
+		<java jar="build/jar/GridSchedulers.jar" fork="true">
+			<arg line="localhost" />
+		</java>
+		<java jar="build/jar/Clusters.jar" fork="true">
+			<arg line="localhost" />
+		</java>
+		<java jar="build/jar/JobCreator.jar" fork="true">
+			<arg line="localhost" />
+		</java>
+	</target>
+
+</project>

@@ -16,7 +16,7 @@ public class Clusters {
 	public static void main(String[] args) {
 		
 		if (args.length < 1) {
-			System.err.println("Please specify the nr of clusters");
+			System.err.println("Please specify the location of the registry");
 			return;
 		}
 		long seed = System.currentTimeMillis();

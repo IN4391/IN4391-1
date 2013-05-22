@@ -135,7 +135,7 @@ public class ResourceManager extends UnicastRemoteObject implements INodeEventHa
 		
 		// Bind the node to the RMI registry.
 		try {
-			String url = "//"+registry+":1099/"+socketURL;
+			String url = "rmi://"+registry+":1099/"+socketURL;
 			//System.out.println("Binding to: "+registry);
 			//System.out.println("Register: " + Arrays.toString(java.rmi.Naming.list(registry)));
 			System.out.println("trying to bind to: "+url);

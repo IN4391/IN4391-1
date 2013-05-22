@@ -137,7 +137,7 @@ public class GridScheduler extends UnicastRemoteObject implements IMessageReceiv
 		
 		// Bind the node to the RMI registry.
 		try {
-			String url2 = "//"+registry+":1099/"+url;
+			String url2 = "rmi://"+registry+":1099/"+url;
 			//System.out.println("Register: " + Arrays.toString(java.rmi.Naming.list(registry)));
 			System.out.println("trying to bind to: "+url2);
 			java.rmi.Naming.rebind(url2, this);

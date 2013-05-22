@@ -5,6 +5,7 @@ import java.rmi.AlreadyBoundException;
 import java.rmi.NotBoundException;
 import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
+import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.Scanner;
 
@@ -45,7 +46,11 @@ public class JobCreator extends UnicastRemoteObject implements IMessageReceivedH
 		
 		// Bind the node to the RMI registry.
 		try {
-			String url = "//"+registry+":1099/JobCreator";
+			String registryServer = "localhost";
+			//Registry registry2 = java.rmi.registry.LocateRegistry.getRegistry(registryServer);
+			//registry2.rebind("JobCreator", this );
+			
+			String url = "rmi://"+registry+":1099/JobCreator";
 			System.out.println("trying to bind to: "+url);
 			java.rmi.Naming.bind(url, this);
 			System.out.println("binded to: "+url);
@@ -189,10 +194,10 @@ public class JobCreator extends UnicastRemoteObject implements IMessageReceivedH
 		final int nrClusters = Integer.parseInt(args[0]);
 		//registry = args[1];
 		
-		System.setProperty("java.security.policy", "file:./my.policy");
-		if (System.getSecurityManager() == null) {
+		//System.setProperty("java.security.policy", "file:./my.policy");
+		//if (System.getSecurityManager() == null) {
 			//System.setSecurityManager(new RMISecurityManager());
-		}
+		//}
 		
 		JobCreator jc = new JobCreator(nrClusters, args[1]);
 		
