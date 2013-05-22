@@ -35,7 +35,7 @@
 
 		<jar destfile="build/jar/GridSchedulers.jar" basedir="build/classes">
 			<manifest>
-				<attribute name="Main-Class" value="distributed.systems.gridscheduler.GridScedulers" />
+				<attribute name="Main-Class" value="distributed.systems.gridscheduler.GridSchedulers" />
 			</manifest>
 		</jar>
 
@@ -55,7 +55,7 @@
 			<arg line="localhost" />
 		</java>
 		<java jar="build/jar/JobCreator.jar" fork="true">
-			<arg line="localhost" />
+			<arg line="5 localhost" />
 		</java>
 	</target>
 
