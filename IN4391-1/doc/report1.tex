@@ -25,12 +25,18 @@ The initial Virtual Grid Simulator consisted of a single GridScheduler (GS) that
 \end{figure}
 
 \section{Distributed solution}
-A distributed solution consists of having multiple gridschedulers that can be contacted by the RMs. Each gridscheduler maintains the load of each cluster in a hashmap, this way they can balance the load between the clusters. Load-balancing is very important, otherwise some clusters may wear faster than others. But this of course introduces some challenges, regarding maintaining the same view of the clusters, and how to deal with leaving and joining gridschedulers. In the next two sections, we will elaborate on how we dealt with the replication and consistency problem, and how we made the system fault-tolerant.
+A distributed solution consists of having multiple gridschedulers that can be contacted by the RMs. Each gridscheduler maintains the load of each cluster in a hashmap, this way they can balance the load between the clusters. Load-balancing is very important, otherwise some clusters may wear faster than others. But this of course introduces some challenges, regarding maintaining the same view of the clusters, and how to deal with leaving and joining gridschedulers.
+
+\subsection{Scalability}
+Due to the fact that a single GridScheduler can only handle a few clusters, the basic application wasn't very scalable. To be able to manage many clusters, multiple GridSchedulers are needed. We implemented a  GridSchedulerNode that could be deployed on different machines and when working together is able to manage many clusters. Each GridSchedulerNode has a Queue that consists of Jobs that have not finished yet. Each gridscheduler is responsible for the execution of the jobs that are in its Queue. To be able to scale well, all the nodes need to have about the same amount of jobs in its Queue. It is therefore important that all the nodes know what the load is in each node. This is done by passing controlmessages around which contain the load of the nodes. Gridschedulers can offload jobs to other gridschedulers when it passes a certain threshold when it currently has too many jobs waiting. Using this technique we make sure that all the nodes have more or less the same load and this should scale the application in a correct way.
+
 
 \begin{figure}
 	\includegraphics[scale=0.7]{distributedGS.jpg}
 	\caption{Distributed solution with multiple Gridschedulers.}
 \end{figure}
+
+ In the next two sections, we will elaborate on how we dealt with the replication and consistency problem, and how we made the system fault-tolerant.
 
 \subsection{Initialization}
 Each Resource Manager is initialized with one random Gridscheduler that is active at the moment the Resource Manager comes online. It then contacts this Gridscheduler to inform it about its existence. The Gridscheduler then sends back an acknowledgment and forwards this info to the other Gridschedulers who upon receiving also send an acknowledgment to the Resource Manager.
@@ -45,6 +51,11 @@ We designed a fault tolerance mechanism, that utilizes a mesh structure in the n
 A gridscheduler node failure can be detected either by another gridscheduler or by a resource manager of a cluster.
 When a resource manager offloads a job to a gridscheduler, it waits for an acknowledgment (asynchronously) for 2 seconds, and if it didn't receive a reply, it removes the gridscheduler from its list of gridschedulers, and retries with another one including in that message the failure of a gridscheduler. The gridscheduler that gets contacted with a Retry message, first informs all clusters that the gridscheduler, or gridschedulers in case it is a double retry, is down. Then it informs the gridschedulers, who immediately go into maintenance mode. When a gridscheduler is in maintenance mode, jobs keep getting received by the clusters, but it does not offload jobs to clusters until the control structure is rebuilt. The two nodes who lost a neighbor both send a message to the other neighbor through the broken ring (assumed there are no other failures). They check whose id is bigger, and that node send a message through the ring announcing the end of maintenance.
 
+\begin{figure}
+	\includegraphics[scale=0.6]{fttwo.jpg}
+	\caption{Single node failure recovery.}
+\end{figure}
+
 Implemented:
 \begin{itemize}
 	\item (Bidirectional) Ring structure for messaging (communication load divided over all nodes).
@@ -53,7 +64,7 @@ Implemented:
 	\item Loadbalancing clusters requires consistent view of clusters free slots by gridschedulers: strict consistency, every change in a cluster by a gridscheduler, is sent through the ring to inform all other gridschedulers about it
 \end{itemize}
 
-Designbed but not implemented:
+Designed but not implemented:
 \begin{itemize}
 	\item Mesh structure utilized for ring reconstruction at node failure, achieved by maintaining list of known peers and gossiping
 	\item With n nodes, ring of size n, and a k-connected graph (mesh) for ring reconstruction, maintained by a list of k known peers
@@ -65,6 +76,7 @@ Designbed but not implemented:
 \subsection{Gridscheduler selection}
 The RecourceManager of each cluster offloads a job to one gridscheduler from its list of gridschedulers, obtained at initialization. This selection can be done in a random, or round-robin fashion. We implemented a random selection mechanism. One might consider the round-robin approach, to achieve better load balancing for the job queues of the gridschedulers. We also implemented a load balancing mechanism for the job queues of the gridschedulers, where each node regularly forwards information about its job queue to some destination in the ring structure. Upon receiving this information, a node can check whether the amount of waiting jobs in its queue is at least one order of magnitude higher than of the sending node. If that is so half of the jobs are offloaded to that gridscheduler.
 
+<<<<<<< HEAD
 
 \subsection{Scalability}
 Due to the fact that a single GridScheduler can only handle a few clusters, the basic application wasn't very scalable. To be able to manage many clusters, multiple GridSchedulers are needed. We implemented a  GridSchedulerNode that could be deployed on different machines and when working together is able to manage many clusters. Each GridSchedulerNode has a Queue that consists of Jobs that have not finished yet. Each gridscheduler is responsible for the execution of the jobs that are in its Queue. To be able to scale well, all the nodes need to have about the same amount of jobs in its Queue. It is therefore important that all the nodes know what the load is in each node. This is done by passing controlmessages around which contain the load of the nodes. Gridschedulers can offload jobs to other gridschedulers when it passes a certain threshold when it currently has too many jobs waiting. Using this technique we make sure that all the nodes have more or less the same load and this should scale the application in a correct way.
@@ -76,6 +88,8 @@ Unfortunately the nodes in the system are not completely resilient against fault
   \caption{A goes down and is removed from the ring.}
 \end{figure}
 
+=======
+>>>>>>> report final
 \subsection{Bonus Features}
 Besides the scalability and the fault tolerance, we did some additional work to improve this system. Because we think the solutions found in this study may benefit other people as well that face similar problems in fault tolerance or scalability. Therefore the complete source code for the Distributed Grid Scheduler is open source and can be found on GitHub [https://github.com/IN4391/IN4391-1]. Besides that we also added an extensive logging system, so for each individual node a separate logging file is made and events are logged to these files.
 
@@ -129,7 +143,7 @@ Besides the scalability and the fault tolerance, we did some additional work to 
 Simple tests were performed to test the separate mechanisms for fault-tolerance, for example by letting a gridscheduler shut down after some time. What is interesting to measure when this event takes place, is how long it takes for the system to reconstruct its ring structure. Unfortunately even with a large number of gridschedulers this is a negligible amount of time. Since the asynchronous messaging between the clusters and gridschedulers remains intact even when in maintenance mode, a slight peak in the job queues is noticeable.
 
 \section{Experimental Setup}
-During development we experimented with different consoles on the same machine, to see how they connected with each other. We were able to simulate the application using 5 different gridschedulers and 10 different Clusters. We could see that the different gridschedulers took different jobs from overloaded resourcemanagers and took over jobs from each other gridschedulers if one gridscheduler was overloaded. The jobs The Jobs that were simulated on the different clusters all had a variable time between 4 and 13 seconds. We used a Jobcreator that was similar to the original Simulation that send these jobs to the first Resourcemanager. The ResourceManager than has to pass it through down to its own Cluster or upwards to a Gridscheduler node. 
+During development we experimented with different consoles on the same machine, to see how they connected with each other. We were able to simulate the application using 5 different gridschedulers and 10 different Clusters. We could see that the different gridschedulers took different jobs from overloaded resourcemanagers and took over jobs from each other if one gridscheduler was overloaded. The jobs that were simulated on the different clusters all had an average execution time between 4 and 13 seconds. We used a Jobcreator that was similar to the original Simulation that send these jobs to the first Resourcemanager. The ResourceManager than has to pass it through down to its own Cluster or upwards to a Gridscheduler node. 
 To see how the improved version of the gridscheduler performed, we wanted to conduct a few experiments on the DAS supercomputer located at the TU Delft. However due to some unknown issues we are not yet able to conduct the experiments on the cluster. 
 
 \section{Results}
