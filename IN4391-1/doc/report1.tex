@@ -125,21 +125,19 @@ Besides the scalability and the fault tolerance, we did some additional work to 
 Simple tests were performed to test the separate mechanisms for fault-tolerance, for example by letting a gridscheduler shut down after some time. What is interesting to measure when this event takes place, is how long it takes for the system to reconstruct its ring structure. Unfortunately even with a large number of gridschedulers this is a negligible amount of time. Since the asynchronous messaging between the clusters and gridschedulers remains intact even when in maintenance mode, a slight peak in the job queues is noticeable.
 
 \section{Experimental Setup}
-To see how the improved version of the gridscheduler performed, we conducted a few experiments on the DAS supercomputer located at the TU Delft [note]. Jobs where simulated on different clusters having a variable time between 4 and 12 seconds. The jobs were send to the resourcemanagers at different rates to see how they performed. We used different amounts of Schedulers to see how different they perform and to estimate how well this solution scales.
-% - explain amount nodes
-% - explain what is on each node
-% - setup of gridschedulers
-% - getting to 100.000 clusternodes
+During development we experimented with different consoles on the same machine, to see how they connected with each other. We were able to simulate the application using 5 different gridschedulers and 10 different Clusters. We could see that the different gridschedulers took different jobs from overloaded resourcemanagers and took over jobs from each other gridschedulers if one gridscheduler was overloaded. The jobs The Jobs that were simulated on the different clusters all had a variable time between 4 and 13 seconds. We used a Jobcreator that was similar to the original Simulation that send these jobs to the first Resourcemanager. The ResourceManager than has to pass it through down to its own Cluster or upwards to a Gridscheduler node. 
+To see how the improved version of the gridscheduler performed, we wanted to conduct a few experiments on the DAS supercomputer located at the TU Delft. However due to some unknown issues we are not yet able to conduct the experiments on the cluster. 
 
 \section{Results}
-After extensive testing we came to the following results...
+After extensive testing we came to the following results. 
+Although the results where not what we had hoped it would be, we still got a good understanding of the complications that are around when designing and implementing a distributed system.
 
 \section{Discussion and Future work}
-The question is how well this will work when the nodes are in different parts of the world. In this experiment we did the test on only one single cluster where the different nodes are close to each other and have a low latency between them. Also due to time constraints the jobs where relatively small, both in size and in time before completion. In a more realistic world the jobs are considerable longer and take a longer time to transit. More realistic testing should be done in order to test how well this works when the schedulers are truly distributed. This wasn't our main goal in this setup in which we where only showing this is a viable option.
-During the building of this application we faced different challenges. First thing was that we had to think of how different nodes should communicate with each other, thus designing a new protocol for communication with the nodes. Another challenge was the need for testing this on the DAS-cluster. The DAS-cluster has a particular way of working with nodes that we have to work with. It was quite a challenge to find out how to work with the DAS-cluster as there wasn't any lot of documentation available on how to work with RMI on the DAS-cluster.
+
+%The question is how well this will work when the nodes are in different parts of the world. In this experiment we did the test on only one single cluster where the different nodes are close to each other and have a low latency between them. Also due to time constraints the jobs where relatively small, both in size and in time before completion. In a more realistic world the jobs are considerable longer and take a longer time to transit. More realistic testing should be done in order to test how well this works when the schedulers are truly distributed. This wasn't our main goal in this setup in which we where only showing this is a viable option.
+%During the building of this application we faced different challenges. First thing was that we had to think of how different nodes should communicate with each other, thus designing a new protocol for communication with the nodes. Another challenge was the need for testing this on the DAS-cluster. The DAS-cluster has a particular way of working with nodes that we have to work with. It was quite a challenge to find out how to work with the DAS-cluster as there wasn't any lot of documentation available on how to work with RMI on the DAS-cluster.
 
 \section{Conclusion}
 We showed that it is possible to create a distributed scheduler, that is both scalable and fault tolerant. This can be done when the nodes communicate with each other using different message types. The passing around of messages ensures that different nodes know what to do. The specifications of these messages are very important so that all nodes understand each other.
-%As a result we where able to manage 100.000 nodes at once using this distributed application.
 
 \end{document}
