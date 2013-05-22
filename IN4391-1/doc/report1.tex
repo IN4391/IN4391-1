@@ -73,7 +73,7 @@ Due to the fact that a single GridScheduler can only handle a few clusters, the 
 Unfortunately the nodes in the system are not completely resilient against faults, or failures. A node can suddenly crash and loose all of the contents of its Queue. Because you want all jobs sent to the system will be returned when they are finished the jobs need to be backed up somewhere in case a node breaks down. The solution here is to backup all jobs on another node and distribute this backup to all other nodes when a node has failed. The new problem now is, how to detect when a node has crashed? Our solution is to give the responsibility of detecting whether or not a node is crashed to the original upstream and downstream of the node. If both these nodes agree that the node between them has crashed, they will broadcast the fact that this node is no longer available and make a new connection between them so that the bidirectional ring is connected again.
 
 \subsection{Bonus Features}
-Besides the scalability and the fault tolerance, we did some additional work to improve this system. Because we think the solutions found in this study may benefit other people as well that face similar problems in fault tolerance or scalability. Therefore the complete source code for the Distributed Grid Scheduler is open source and can be found on GitHub [https://github.com/IN4391/IN4391-1].
+Besides the scalability and the fault tolerance, we did some additional work to improve this system. Because we think the solutions found in this study may benefit other people as well that face similar problems in fault tolerance or scalability. Therefore the complete source code for the Distributed Grid Scheduler is open source and can be found on GitHub [https://github.com/IN4391/IN4391-1]. Besides that we also added an extensive logging system, so for each individual node a separate logging file is made and events are logged to these files.
 
 \begin{table*}
 \begin{tabular}{ |l|l| }
@@ -92,7 +92,7 @@ Besides the scalability and the fault tolerance, we did some additional work to 
   & JoiningGS $\rightarrow$ send(ResourceManagerJoin, gs) \\
   \hline
 \end{tabular}
-\caption{ResourceManager intialization and message received function.}
+\caption{ResourceManager initialization and message received function.}
 \end{table*}
 
 \begin{table*}
