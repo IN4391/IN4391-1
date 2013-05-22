@@ -35,7 +35,7 @@
 
 		<jar destfile="build/jar/GridSchedulers.jar" basedir="build/classes">
 			<manifest>
-				<attribute name="Main-Class" value="distributed.systems.gridscheduler.Clusters" />
+				<attribute name="Main-Class" value="distributed.systems.gridscheduler.GridScedulers" />
 			</manifest>
 		</jar>
 
